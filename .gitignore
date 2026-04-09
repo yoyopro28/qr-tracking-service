@@ -12,4 +12,5 @@ dist
 build
 *.log
 generated
+uploads
 prisma/dev.db
