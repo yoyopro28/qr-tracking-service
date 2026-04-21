@@ -196,6 +196,8 @@ export async function createCampaignTemplate(params: {
   mimeType: string;
   fileSizeBytes: number;
   pageCount: number;
+  width: number | null;
+  height: number | null;
   qrPageNumber: number;
   qrX: number;
   qrY: number;
@@ -214,6 +216,56 @@ export async function createCampaignTemplate(params: {
       mimeType: params.mimeType,
       fileSizeBytes: params.fileSizeBytes,
       pageCount: params.pageCount,
+      width: params.width,
+      height: params.height,
+      qrPageNumber: params.qrPageNumber,
+      qrX: params.qrX,
+      qrY: params.qrY,
+      qrWidth: params.qrWidth,
+      qrHeight: params.qrHeight,
+      shortTextEnabled: params.shortTextEnabled,
+      shortTextOffsetX: params.shortTextOffsetX,
+      shortTextOffsetY: params.shortTextOffsetY,
+    },
+    select: {
+      id: true,
+    },
+  });
+}
+
+export async function updateCampaignTemplatePlacement(params: {
+  workspaceId: string;
+  campaignId: string;
+  templateId: string;
+  qrPageNumber: number;
+  qrX: number;
+  qrY: number;
+  qrWidth: number;
+  qrHeight: number;
+  shortTextEnabled: boolean;
+  shortTextOffsetX: number | null;
+  shortTextOffsetY: number | null;
+}) {
+  const template = await prisma.template.findFirst({
+    where: {
+      id: params.templateId,
+      campaignId: params.campaignId,
+      workspaceId: params.workspaceId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!template) {
+    throw new Error("Template not found in the active workspace.");
+  }
+
+  return prisma.template.update({
+    where: {
+      id: template.id,
+    },
+    data: {
       qrPageNumber: params.qrPageNumber,
       qrX: params.qrX,
       qrY: params.qrY,
@@ -234,6 +286,36 @@ export function estimatePdfPageCount(bytes: Uint8Array) {
   const matches = pdfText.match(/\/Type\s*\/Page\b/g);
 
   return Math.max(matches?.length ?? 0, 1);
+}
+
+export function estimatePdfPageDimensions(bytes: Uint8Array) {
+  const pdfText = Buffer.from(bytes).toString("latin1");
+  const mediaBoxMatch = pdfText.match(
+    /\/MediaBox\s*\[\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\]/,
+  );
+
+  if (!mediaBoxMatch) {
+    return {
+      width: null,
+      height: null,
+    };
+  }
+
+  const [, x1, y1, x2, y2] = mediaBoxMatch;
+  const width = Number(x2) - Number(x1);
+  const height = Number(y2) - Number(y1);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return {
+      width: null,
+      height: null,
+    };
+  }
+
+  return {
+    width,
+    height,
+  };
 }
 
 export const templatesModule = {

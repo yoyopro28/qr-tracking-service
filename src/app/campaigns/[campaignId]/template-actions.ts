@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createCampaignTemplate,
+  estimatePdfPageDimensions,
   estimatePdfPageCount,
   type TemplateFieldErrors,
   type TemplateFormValues,
+  updateCampaignTemplatePlacement,
   validateTemplateInput,
 } from "@/domains/templates";
 import { getWorkspaceCampaignById } from "@/domains/campaigns";
@@ -16,6 +18,12 @@ import { saveTemplateUpload } from "@/server/storage/template-storage";
 export type TemplateActionState = {
   formError?: string;
   fieldErrors?: TemplateFieldErrors;
+  values: Omit<TemplateFormValues, "templateFile">;
+};
+
+export type TemplatePlacementActionState = {
+  formError?: string;
+  fieldErrors?: Omit<TemplateFieldErrors, "templateFile">;
   values: Omit<TemplateFormValues, "templateFile">;
 };
 
@@ -64,13 +72,14 @@ export async function createTemplateAction(
     const fileBytes = new Uint8Array(
       await validation.parsedValues.templateFile.arrayBuffer(),
     );
+    const pdfDimensions = estimatePdfPageDimensions(fileBytes);
     const savedFile = await saveTemplateUpload({
       campaignId,
       originalFilename: validation.parsedValues.templateFile.name,
       bytes: fileBytes,
     });
 
-    await createCampaignTemplate({
+    const template = await createCampaignTemplate({
       workspaceId: workspace.id,
       campaignId,
       originalFilename: validation.parsedValues.templateFile.name,
@@ -78,6 +87,57 @@ export async function createTemplateAction(
       mimeType: validation.parsedValues.templateFile.type || "application/pdf",
       fileSizeBytes: validation.parsedValues.templateFile.size,
       pageCount: estimatePdfPageCount(fileBytes),
+      width: pdfDimensions.width,
+      height: pdfDimensions.height,
+      qrPageNumber: validation.parsedValues.qrPageNumber,
+      qrX: validation.parsedValues.qrX,
+      qrY: validation.parsedValues.qrY,
+      qrWidth: validation.parsedValues.qrWidth,
+      qrHeight: validation.parsedValues.qrHeight,
+      shortTextEnabled: validation.parsedValues.shortTextEnabled,
+      shortTextOffsetX: validation.parsedValues.shortTextOffsetX,
+      shortTextOffsetY: validation.parsedValues.shortTextOffsetY,
+    });
+
+    revalidatePath(`/campaigns/${campaignId}`);
+    redirect(`/campaigns/${campaignId}?templateCreated=1&templateId=${template.id}`);
+  } catch (error) {
+    console.error("Failed to create template", error);
+
+    return {
+      values: validation.values,
+      formError: "Template upload could not be saved. Please try again.",
+    };
+  }
+}
+
+export async function updateTemplatePlacementAction(
+  campaignId: string,
+  templateId: string,
+  _prevState: TemplatePlacementActionState,
+  formData: FormData,
+): Promise<TemplatePlacementActionState> {
+  const rawValues = readTemplateFormData(formData);
+  const validation = validateTemplateInput({
+    ...rawValues,
+    templateFile: new File(["placement"], "placement.pdf", {
+      type: "application/pdf",
+    }),
+  });
+
+  if (!validation.isValid || !validation.parsedValues) {
+    return {
+      values: validation.values,
+      fieldErrors: validation.fieldErrors,
+    };
+  }
+
+  try {
+    const workspace = await resolveDemoWorkspace();
+    await updateCampaignTemplatePlacement({
+      workspaceId: workspace.id,
+      campaignId,
+      templateId,
       qrPageNumber: validation.parsedValues.qrPageNumber,
       qrX: validation.parsedValues.qrX,
       qrY: validation.parsedValues.qrY,
@@ -88,14 +148,14 @@ export async function createTemplateAction(
       shortTextOffsetY: validation.parsedValues.shortTextOffsetY,
     });
   } catch (error) {
-    console.error("Failed to create template", error);
+    console.error("Failed to update template placement", error);
 
     return {
       values: validation.values,
-      formError: "Template upload could not be saved. Please try again.",
+      formError: "Template placement could not be updated. Please try again.",
     };
   }
 
   revalidatePath(`/campaigns/${campaignId}`);
-  redirect(`/campaigns/${campaignId}?templateCreated=1`);
+  redirect(`/campaigns/${campaignId}?templateUpdated=1&templateId=${templateId}`);
 }

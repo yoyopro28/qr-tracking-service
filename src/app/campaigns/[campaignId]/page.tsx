@@ -9,6 +9,7 @@ import { generateFlyersAction } from "@/app/campaigns/[campaignId]/flyer-actions
 import { emptyFlyerGenerationActionState } from "@/app/campaigns/[campaignId]/flyer-form-state";
 import { CampaignForm } from "@/components/campaigns/campaign-form";
 import { FlyerGenerationForm } from "@/components/flyers/flyer-generation-form";
+import { FlyerCard } from "@/components/flyers/flyer-card";
 import { AppShell } from "@/components/layout/app-shell";
 import { TemplateUploadForm } from "@/components/templates/template-upload-form";
 import { getWorkspaceCampaignById } from "@/domains/campaigns";
@@ -185,6 +186,30 @@ export default async function CampaignDetailPage({
                       </dd>
                     </div>
                   </dl>
+                  <div className="cardActions">
+                    <a
+                      className="textLink"
+                      href={`/api/templates/${template.id}/document`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open template PDF
+                    </a>
+                    {template.qrPageNumber !== null &&
+                    template.qrX !== null &&
+                    template.qrY !== null &&
+                    template.qrWidth !== null &&
+                    template.qrHeight !== null ? (
+                      <a
+                        className="textLink"
+                        href={`/api/templates/${template.id}/print-preview`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open print preview
+                      </a>
+                    ) : null}
+                  </div>
                 </article>
               ))}
             </div>
@@ -227,40 +252,7 @@ export default async function CampaignDetailPage({
           ) : (
             <div className="campaignList">
               {campaign.flyers.map((flyer) => (
-                <article key={flyer.id} className="campaignCard">
-                  <div className="cardTopline">
-                    <span className="statusBadge">{flyer.status.toLowerCase()}</span>
-                    <span className="metaText">
-                      {flyer.template.originalFilename}
-                    </span>
-                  </div>
-                  <h3>{flyer.shortcode}</h3>
-                  <dl className="miniDetailList">
-                    <div>
-                      <dt>Tracking URL</dt>
-                      <dd className="breakValue">{flyer.trackingUrl}</dd>
-                    </div>
-                    <div>
-                      <dt>Generated</dt>
-                      <dd>{(flyer.generatedAt ?? flyer.createdAt).toLocaleString()}</dd>
-                    </div>
-                    <div>
-                      <dt>Flyer ID</dt>
-                      <dd className="breakValue">{flyer.id}</dd>
-                    </div>
-                    <div>
-                      <dt>Activation</dt>
-                      <dd>
-                        <Link
-                          className="textLink"
-                          href={`/admin/activation?shortcode=${encodeURIComponent(flyer.shortcode)}`}
-                        >
-                          Open admin activation
-                        </Link>
-                      </dd>
-                    </div>
-                  </dl>
-                </article>
+                <FlyerCard key={flyer.id} flyer={flyer} />
               ))}
             </div>
           )}

@@ -4,6 +4,17 @@ import { randomUUID } from "node:crypto";
 
 const TEMPLATE_UPLOAD_ROOT = path.join(process.cwd(), "uploads", "templates");
 
+export function resolveTemplateStoragePath(storageKey: string) {
+  const absolutePath = path.resolve(process.cwd(), storageKey);
+  const uploadsRoot = path.resolve(process.cwd(), "uploads");
+
+  if (!absolutePath.startsWith(uploadsRoot)) {
+    throw new Error("Invalid template path.");
+  }
+
+  return absolutePath;
+}
+
 export async function saveTemplateUpload(params: {
   campaignId: string;
   originalFilename: string;

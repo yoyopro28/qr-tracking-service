@@ -64,10 +64,23 @@ export async function generateFlyersAction(
       };
     }
 
+    if (
+      template.qrPageNumber === null ||
+      template.qrX === null ||
+      template.qrY === null ||
+      template.qrWidth === null ||
+      template.qrHeight === null
+    ) {
+      return {
+        values: validation.values,
+        formError: "The selected template needs a saved QR placement before flyers can be generated.",
+      };
+    }
+
     await generateCampaignFlyers({
       workspaceId: workspace.id,
       campaignId,
-      templateId: template.id,
+      template,
       quantity: validation.parsedQuantity,
     });
   } catch (error) {
