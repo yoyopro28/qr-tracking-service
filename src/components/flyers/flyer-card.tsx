@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ConfirmDeleteForm } from "@/components/common/confirm-delete-form";
 import { QRCodeViewer } from "./qr-code-viewer";
 
 type FlyerCardProps = {
+  deleteAction: (formData: FormData) => Promise<void> | void;
   flyer: {
     id: string;
     shortcode: string;
@@ -25,7 +27,7 @@ const flyerDateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export function FlyerCard({ flyer }: FlyerCardProps) {
+export function FlyerCard({ deleteAction, flyer }: FlyerCardProps) {
   const [showQRCode, setShowQRCode] = useState(false);
 
   return (
@@ -73,15 +75,24 @@ export function FlyerCard({ flyer }: FlyerCardProps) {
             Open generated PDF
           </a>
         ) : null}
+        <Link className="textLink" href="/admin/activation/scan">
+          Scan printed QR to activate
+        </Link>
+        <ConfirmDeleteForm
+          action={deleteAction}
+          confirmMessage={`Delete flyer ${flyer.shortcode} and its activation/scan history?`}
+          label="Delete flyer"
+        />
       </div>
 
       <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e5e5e5" }}>
         <button
           className="textLink"
+          type="button"
           onClick={() => setShowQRCode(!showQRCode)}
           style={{ cursor: "pointer", background: "none", border: "none", padding: 0 }}
         >
-          {showQRCode ? "Hide" : "Show"} QR Code
+          {showQRCode ? "Hide" : "Show"} printed QR
         </button>
 
         {showQRCode && (

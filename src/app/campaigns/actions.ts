@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createWorkspaceCampaign,
+  deleteWorkspaceCampaign,
   type CampaignFieldErrors,
   type CampaignFormValues,
   updateWorkspaceCampaign,
@@ -88,4 +89,18 @@ export async function updateCampaignAction(
   revalidatePath("/campaigns");
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}?updated=1`);
+}
+
+export async function deleteCampaignAction(campaignId: string, _formData: FormData) {
+  try {
+    const workspace = await resolveDemoWorkspace();
+
+    await deleteWorkspaceCampaign(workspace.id, campaignId);
+  } catch (error) {
+    console.error("Failed to delete campaign", error);
+    redirect("/campaigns?deleteFailed=1");
+  }
+
+  revalidatePath("/campaigns");
+  redirect("/campaigns?deleted=1");
 }

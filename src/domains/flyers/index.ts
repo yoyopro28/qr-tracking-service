@@ -272,6 +272,33 @@ export async function getWorkspaceTemplateForCampaign(params: {
   });
 }
 
+export async function deleteWorkspaceFlyer(params: {
+  workspaceId: string;
+  campaignId: string;
+  flyerId: string;
+}) {
+  const flyer = await prisma.flyer.findFirst({
+    where: {
+      id: params.flyerId,
+      workspaceId: params.workspaceId,
+      campaignId: params.campaignId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!flyer) {
+    throw new Error("Flyer not found in the active workspace.");
+  }
+
+  await prisma.flyer.delete({
+    where: {
+      id: flyer.id,
+    },
+  });
+}
+
 export const flyersModule = {
   name: "flyers",
   status: "unique-id-generation-and-pdf-output-enabled",

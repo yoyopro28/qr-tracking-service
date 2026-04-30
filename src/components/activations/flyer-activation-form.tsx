@@ -70,6 +70,8 @@ export function FlyerActivationForm({
       </div>
 
       <form action={formAction} className="stackForm">
+        <input type="hidden" name="source" value={state.values.source} />
+
         <label className="field">
           <span className="fieldLabel">Existing location</span>
           <select

@@ -4,17 +4,30 @@ import { prisma } from "@/lib/prisma";
 export type ActivationFormValues = {
   locationId: string;
   newLocationName: string;
+  source: ActivationInputSource;
 };
 
 export type ActivationFieldErrors = Partial<Record<keyof ActivationFormValues, string[]>>;
+export type ActivationInputSource = "manual_admin_entry" | "admin_scan";
 
 export function normalizeShortcode(value: string) {
   return value.trim().toUpperCase();
 }
 
+export function normalizeActivationInputSource(value: string): ActivationInputSource {
+  return value === "admin_scan" ? "admin_scan" : "manual_admin_entry";
+}
+
+function toActivationSource(source: ActivationInputSource) {
+  return source === "admin_scan"
+    ? ActivationSource.ADMIN_SCAN
+    : ActivationSource.MANUAL_ADMIN_ENTRY;
+}
+
 export function validateActivationInput(values: ActivationFormValues) {
   const locationId = values.locationId.trim();
   const newLocationName = values.newLocationName.trim();
+  const source = normalizeActivationInputSource(values.source);
   const fieldErrors: ActivationFieldErrors = {};
 
   if (!locationId && !newLocationName) {
@@ -30,6 +43,7 @@ export function validateActivationInput(values: ActivationFormValues) {
     values: {
       locationId,
       newLocationName,
+      source,
     },
     fieldErrors,
     isValid: Object.keys(fieldErrors).length === 0,
@@ -123,6 +137,7 @@ export async function activateFlyer(params: {
   campaignId: string;
   locationId?: string;
   newLocationName?: string;
+  source?: ActivationInputSource;
 }) {
   return prisma.$transaction(async (tx) => {
     const flyer = await tx.flyer.findFirst({
@@ -172,7 +187,7 @@ export async function activateFlyer(params: {
           workspaceId: params.workspaceId,
           flyerId: params.flyerId,
           locationId,
-          source: ActivationSource.MANUAL_ADMIN_ENTRY,
+          source: toActivationSource(params.source ?? "manual_admin_entry"),
         },
       });
     } catch (error) {

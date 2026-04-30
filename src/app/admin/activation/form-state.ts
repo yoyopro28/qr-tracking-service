@@ -4,5 +4,6 @@ export const emptyActivationActionState: ActivationActionState = {
   values: {
     locationId: "",
     newLocationName: "",
+    source: "manual_admin_entry",
   },
 };

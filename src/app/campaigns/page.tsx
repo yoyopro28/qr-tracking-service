@@ -1,17 +1,31 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { createCampaignAction } from "@/app/campaigns/actions";
+import { createCampaignAction, deleteCampaignAction } from "@/app/campaigns/actions";
 import { emptyCampaignActionState } from "@/app/campaigns/form-state";
 import { CampaignForm } from "@/components/campaigns/campaign-form";
+import { ConfirmDeleteForm } from "@/components/common/confirm-delete-form";
 import { AppShell } from "@/components/layout/app-shell";
 import { listWorkspaceCampaigns } from "@/domains/campaigns";
 import { resolveDemoWorkspace } from "@/domains/workspaces";
 
-export default async function CampaignListPage() {
+type CampaignListPageProps = {
+  searchParams: Promise<{
+    deleted?: string;
+    deleteFailed?: string;
+  }>;
+};
+
+export default async function CampaignListPage({ searchParams }: CampaignListPageProps) {
   noStore();
 
+  const query = await searchParams;
   const workspace = await resolveDemoWorkspace();
   const campaigns = await listWorkspaceCampaigns(workspace.id);
+  const flashMessage = query.deleted
+    ? "Campaign deleted."
+    : query.deleteFailed
+      ? "Campaign could not be deleted."
+      : null;
 
   return (
     <AppShell>
@@ -24,6 +38,8 @@ export default async function CampaignListPage() {
           workspace resolution later.
         </p>
       </section>
+
+      {flashMessage ? <p className="noticeBanner">{flashMessage}</p> : null}
 
       <div className="splitLayout">
         <CampaignForm
@@ -67,9 +83,16 @@ export default async function CampaignListPage() {
                   </div>
                   <h3>{campaign.name}</h3>
                   <p className="cardUrl">{campaign.destinationUrl}</p>
-                  <Link className="textLink" href={`/campaigns/${campaign.id}`}>
-                    Open details
-                  </Link>
+                  <div className="cardActions">
+                    <Link className="textLink" href={`/campaigns/${campaign.id}`}>
+                      Open details
+                    </Link>
+                    <ConfirmDeleteForm
+                      action={deleteCampaignAction.bind(null, campaign.id)}
+                      confirmMessage={`Delete campaign "${campaign.name}" and all related flyers, activations, and scans?`}
+                      label="Delete campaign"
+                    />
+                  </div>
                 </article>
               ))}
             </div>

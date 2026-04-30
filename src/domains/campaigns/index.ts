@@ -172,6 +172,28 @@ export async function updateWorkspaceCampaign(
   });
 }
 
+export async function deleteWorkspaceCampaign(workspaceId: string, campaignId: string) {
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      id: campaignId,
+      workspaceId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!campaign) {
+    throw new Error("Campaign not found in the active workspace.");
+  }
+
+  await prisma.campaign.delete({
+    where: {
+      id: campaign.id,
+    },
+  });
+}
+
 export const campaignsModule = {
   name: "campaigns",
   status: "crud-enabled",

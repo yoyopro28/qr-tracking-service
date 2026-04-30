@@ -5,7 +5,10 @@ import {
   type CampaignActionState,
   updateCampaignAction,
 } from "@/app/campaigns/actions";
-import { generateFlyersAction } from "@/app/campaigns/[campaignId]/flyer-actions";
+import {
+  deleteFlyerAction,
+  generateFlyersAction,
+} from "@/app/campaigns/[campaignId]/flyer-actions";
 import { emptyFlyerGenerationActionState } from "@/app/campaigns/[campaignId]/flyer-form-state";
 import { CampaignForm } from "@/components/campaigns/campaign-form";
 import { FlyerGenerationForm } from "@/components/flyers/flyer-generation-form";
@@ -26,6 +29,8 @@ type CampaignDetailPageProps = {
     updated?: string;
     templateCreated?: string;
     flyersGenerated?: string;
+    flyerDeleted?: string;
+    flyerDeleteFailed?: string;
   }>;
 };
 
@@ -62,6 +67,10 @@ export default async function CampaignDetailPage({
         ? "Template uploaded successfully."
         : query.flyersGenerated
           ? "Flyers generated successfully."
+          : query.flyerDeleted
+            ? "Flyer deleted."
+            : query.flyerDeleteFailed
+              ? "Flyer could not be deleted."
       : null;
 
   return (
@@ -252,7 +261,11 @@ export default async function CampaignDetailPage({
           ) : (
             <div className="campaignList">
               {campaign.flyers.map((flyer) => (
-                <FlyerCard key={flyer.id} flyer={flyer} />
+                <FlyerCard
+                  key={flyer.id}
+                  flyer={flyer}
+                  deleteAction={deleteFlyerAction.bind(null, campaign.id, flyer.id)}
+                />
               ))}
             </div>
           )}

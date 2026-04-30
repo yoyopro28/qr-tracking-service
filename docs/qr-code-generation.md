@@ -137,7 +137,8 @@ The `src/lib/qr-code.ts` module provides:
 - QR codes are generated on-demand and not stored
 - Only valid shortcodes (verified in database) can generate QR codes
 - Generated QR codes are cached for 24 hours to prevent abuse
-- Content remains secure as the QR code only encodes the public tracking URL
+- QR codes encode the public redirect URL and create scan events when opened by a regular scanner
+- The admin activation scanner reads the same QR locally and extracts the shortcode without opening the redirect URL
 
 ## Future Enhancements
 

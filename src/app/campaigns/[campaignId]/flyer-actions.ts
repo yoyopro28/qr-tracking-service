@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getWorkspaceCampaignById } from "@/domains/campaigns";
 import {
+  deleteWorkspaceFlyer,
   generateCampaignFlyers,
   getWorkspaceTemplateForCampaign,
   type FlyerGenerationFieldErrors,
@@ -94,4 +95,27 @@ export async function generateFlyersAction(
 
   revalidatePath(`/campaigns/${campaignId}`);
   redirect(`/campaigns/${campaignId}?flyersGenerated=1`);
+}
+
+export async function deleteFlyerAction(
+  campaignId: string,
+  flyerId: string,
+  _formData: FormData,
+) {
+  try {
+    const workspace = await resolveDemoWorkspace();
+
+    await deleteWorkspaceFlyer({
+      workspaceId: workspace.id,
+      campaignId,
+      flyerId,
+    });
+  } catch (error) {
+    console.error("Failed to delete flyer", error);
+    redirect(`/campaigns/${campaignId}?flyerDeleteFailed=1`);
+  }
+
+  revalidatePath(`/campaigns/${campaignId}`);
+  revalidatePath("/campaigns");
+  redirect(`/campaigns/${campaignId}?flyerDeleted=1`);
 }

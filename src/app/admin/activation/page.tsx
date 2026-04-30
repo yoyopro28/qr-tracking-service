@@ -1,4 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
+import Link from "next/link";
 import { activateFlyerAction } from "@/app/admin/activation/actions";
 import { emptyActivationActionState } from "@/app/admin/activation/form-state";
 import { FlyerActivationForm } from "@/components/activations/flyer-activation-form";
@@ -7,6 +8,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import {
   getFlyerForActivationByShortcode,
   listWorkspaceLocationsForCampaign,
+  normalizeActivationInputSource,
   normalizeShortcode,
 } from "@/domains/activations";
 import { resolveDemoWorkspace } from "@/domains/workspaces";
@@ -15,6 +17,7 @@ type ActivationPageProps = {
   searchParams: Promise<{
     shortcode?: string;
     activated?: string;
+    source?: string;
   }>;
 };
 
@@ -24,6 +27,7 @@ export default async function AdminActivationPage({ searchParams }: ActivationPa
   const query = await searchParams;
   const rawShortcode = query.shortcode ?? "";
   const shortcode = normalizeShortcode(rawShortcode);
+  const activationSource = normalizeActivationInputSource(query.source ?? "");
 
   const workspace = await resolveDemoWorkspace();
   const flyer = shortcode
@@ -39,6 +43,12 @@ export default async function AdminActivationPage({ searchParams }: ActivationPa
   const flashMessage = query.activated ? "Flyer activated successfully." : null;
   const latestActivation = flyer?.activations[0] ?? null;
   const isAlreadyActivated = flyer?.status === "ACTIVATED";
+  const activationInitialState = {
+    values: {
+      ...emptyActivationActionState.values,
+      source: activationSource,
+    },
+  };
 
   return (
     <AppShell>
@@ -49,6 +59,11 @@ export default async function AdminActivationPage({ searchParams }: ActivationPa
           This page is reserved for admin scans and maintenance. Public redirect
           tracking remains a separate workflow.
         </p>
+        <div className="heroActions">
+          <Link className="button" href="/admin/activation/scan">
+            Open camera scanner
+          </Link>
+        </div>
       </section>
 
       {flashMessage ? <p className="noticeBanner">{flashMessage}</p> : null}
@@ -113,7 +128,7 @@ export default async function AdminActivationPage({ searchParams }: ActivationPa
         <div className="splitLayout">
           <FlyerActivationForm
             action={activationAction!}
-            initialState={emptyActivationActionState}
+            initialState={activationInitialState}
             locations={locations}
             disabled={isAlreadyActivated}
           />

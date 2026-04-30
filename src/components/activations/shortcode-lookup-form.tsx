@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type ShortcodeLookupFormProps = {
   initialShortcode?: string;
 };
@@ -9,8 +11,8 @@ export function ShortcodeLookupForm({ initialShortcode = "" }: ShortcodeLookupFo
         <div>
           <h2>Scan or enter shortcode</h2>
           <p className="sectionCopy">
-            Use this admin page as the activation scanner entry. Camera scanning can be
-            added later without changing the activation step.
+            Use this admin page as the activation entry. The camera scanner reads the
+            public QR locally and opens this form without logging a public scan.
           </p>
         </div>
       </div>
@@ -35,6 +37,9 @@ export function ShortcodeLookupForm({ initialShortcode = "" }: ShortcodeLookupFo
           <button className="button" type="submit">
             Resolve flyer
           </button>
+          <Link className="button button--secondary" href="/admin/activation/scan">
+            Scan with camera
+          </Link>
         </div>
       </form>
     </section>

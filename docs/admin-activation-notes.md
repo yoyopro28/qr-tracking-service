@@ -3,7 +3,9 @@
 ## Activation flow in this MVP step
 
 - Activation is handled on a dedicated admin page at `/admin/activation`.
-- The admin first scans or manually enters a flyer shortcode.
+- The mobile scanner lives at `/admin/activation/scan`.
+- The admin first scans the same printed flyer QR in that scanner or manually enters a flyer shortcode.
+- Scanner scans decode the QR content locally and route to the activation page; they do not call `/r/[shortcode]` and therefore do not create `scan_events`.
 - After the flyer is resolved, the app immediately asks for location input.
 - The admin can:
   - choose an existing location from the same campaign or shared workspace pool
@@ -16,8 +18,8 @@
 ## Important scope boundaries
 
 - This is an admin-only workflow conceptually, even though auth is still not implemented.
-- Public redirect tracking is still not implemented and remains separate from admin activation.
-- Camera-based QR scanning is not implemented yet; the page currently supports manual shortcode entry and is ready for a scanner enhancement later.
+- Public redirect tracking remains separate from admin activation.
+- Native camera scans of the printed `/r/[shortcode]` QR still count as public scans. Use the admin scanner for non-tracking activation.
 
 ## MVP rules in this implementation
 

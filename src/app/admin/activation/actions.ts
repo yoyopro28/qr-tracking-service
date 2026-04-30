@@ -6,6 +6,7 @@ import {
   activateFlyer,
   getFlyerForActivationByShortcode,
   getWorkspaceLocationForActivation,
+  normalizeActivationInputSource,
   normalizeShortcode,
   type ActivationFieldErrors,
   type ActivationFormValues,
@@ -23,6 +24,7 @@ function readActivationFormData(formData: FormData): ActivationFormValues {
   return {
     locationId: String(formData.get("locationId") ?? ""),
     newLocationName: String(formData.get("newLocationName") ?? ""),
+    source: normalizeActivationInputSource(String(formData.get("source") ?? "")),
   };
 }
 
@@ -75,6 +77,7 @@ export async function activateFlyerAction(
       campaignId: flyer.campaign.id,
       locationId: validation.values.locationId || undefined,
       newLocationName: validation.values.newLocationName || undefined,
+      source: validation.values.source,
     });
   } catch (error) {
     console.error("Failed to activate flyer", error);
