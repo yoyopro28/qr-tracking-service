@@ -52,8 +52,8 @@ export function FlyerGenerationForm({
         <div>
           <h2>Generate flyers</h2>
           <p className="sectionCopy">
-            Pick a template and create flyer records with shortcodes ready for the next
-            MVP steps.
+            Pick a template and create one unique shortcode per printed flyer area.
+            Multi-up templates fill their QR placeholders in order.
           </p>
         </div>
       </div>

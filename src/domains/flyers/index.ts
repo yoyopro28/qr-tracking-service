@@ -1,12 +1,13 @@
-import { readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { FlyerStatus, Prisma } from "@prisma/client";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
 import { appConfig } from "@/server/config/app-config";
-import { generateQRCode } from "@/lib/qr-code";
-import { resolveTemplateStoragePath } from "@/server/storage/template-storage";
 import { saveGeneratedFlyerPdf } from "@/server/storage/generated-flyer-storage";
+import { renderTemplatePdfWithQrPlacements } from "@/server/pdf/qr-placement-renderer";
+import {
+  getStoredTemplateQrPlacements,
+  type TemplateQrPlacement,
+} from "@/domains/templates";
 
 const MIN_FLYER_QUANTITY = 1;
 const MAX_FLYER_QUANTITY = 250;
@@ -33,6 +34,7 @@ type FlyerTemplate = {
   qrY: Prisma.Decimal | number | null;
   qrWidth: Prisma.Decimal | number | null;
   qrHeight: Prisma.Decimal | number | null;
+  qrPlacements: Prisma.JsonValue | null;
   shortTextEnabled: boolean;
   shortTextOffsetX: Prisma.Decimal | number | null;
   shortTextOffsetY: Prisma.Decimal | number | null;
@@ -72,14 +74,6 @@ export function validateFlyerGenerationInput(values: FlyerGenerationFormValues) 
   };
 }
 
-function toNumber(value: Prisma.Decimal | number | null) {
-  if (value === null) {
-    return null;
-  }
-
-  return typeof value === "number" ? value : value.toNumber();
-}
-
 function buildTrackingUrl(shortcode: string) {
   return new URL(`/r/${shortcode}`, appConfig.appUrl).toString();
 }
@@ -94,69 +88,38 @@ function generateShortcode() {
 
 async function renderPrintableFlyerPdf(params: {
   template: FlyerTemplate;
-  shortcode: string;
-  trackingUrl: string;
+  flyerPlacements: Array<{
+    flyer: {
+      shortcode: string;
+      trackingUrl: string;
+    };
+    placement: TemplateQrPlacement;
+  }>;
 }) {
-  const templateBytes = await readFile(resolveTemplateStoragePath(params.template.storageKey));
-  const pdfDocument = await PDFDocument.load(templateBytes);
-  const pageIndex = Math.max((params.template.qrPageNumber ?? 1) - 1, 0);
-  const page = pdfDocument.getPage(pageIndex);
-
-  if (!page) {
-    throw new Error("Configured QR page could not be found in the PDF.");
-  }
-
-  const sourceWidth = toNumber(params.template.width) ?? page.getWidth();
-  const sourceHeight = toNumber(params.template.height) ?? page.getHeight();
-  const qrX = toNumber(params.template.qrX);
-  const qrY = toNumber(params.template.qrY);
-  const qrWidth = toNumber(params.template.qrWidth);
-  const qrHeight = toNumber(params.template.qrHeight);
-
-  if (
-    qrX === null ||
-    qrY === null ||
-    qrWidth === null ||
-    qrHeight === null ||
-    params.template.qrPageNumber === null
-  ) {
-    throw new Error("Template QR placement is incomplete.");
-  }
-
-  const qrImageBytes = await generateQRCode(params.trackingUrl, "image/png", {
-    transparent: true,
+  return renderTemplatePdfWithQrPlacements({
+    templateStorageKey: params.template.storageKey,
+    sourceWidth: params.template.width,
+    sourceHeight: params.template.height,
+    items: params.flyerPlacements.map(({ flyer, placement }) => ({
+      qrContent: flyer.trackingUrl,
+      qrPlacement: {
+        pageNumber: placement.pageNumber,
+        x: placement.x,
+        y: placement.y,
+        width: placement.width,
+        height: placement.height,
+      },
+      shortText: {
+        enabled: params.template.shortTextEnabled,
+        label: flyer.shortcode,
+        offsetX: params.template.shortTextOffsetX,
+        offsetY: params.template.shortTextOffsetY,
+      },
+    })),
   });
-  const qrImage = await pdfDocument.embedPng(qrImageBytes);
-  const pageSize = page.getSize();
-  const scaleX = pageSize.width / sourceWidth;
-  const scaleY = pageSize.height / sourceHeight;
-  const targetX = qrX * scaleX;
-  const targetWidth = qrWidth * scaleX;
-  const targetHeight = qrHeight * scaleY;
-  const targetY = pageSize.height - (qrY + qrHeight) * scaleY;
-
-  page.drawImage(qrImage, {
-    x: targetX,
-    y: targetY,
-    width: targetWidth,
-    height: targetHeight,
-  });
-
-  if (params.template.shortTextEnabled) {
-    const font = await pdfDocument.embedFont(StandardFonts.Helvetica);
-    page.drawText(params.shortcode, {
-      x: targetX + (toNumber(params.template.shortTextOffsetX) ?? 0) * scaleX,
-      y: targetY - 12 - (toNumber(params.template.shortTextOffsetY) ?? 0) * scaleY,
-      size: 10,
-      font,
-      color: rgb(0.15, 0.17, 0.2),
-    });
-  }
-
-  return pdfDocument.save();
 }
 
-async function createSingleFlyer(params: {
+async function createFlyerRecordWithUniqueShortcode(params: {
   workspaceId: string;
   campaignId: string;
   template: FlyerTemplate;
@@ -185,28 +148,7 @@ async function createSingleFlyer(params: {
         },
       });
 
-      const renderedPdf = await renderPrintableFlyerPdf({
-        template: params.template,
-        shortcode: flyer.shortcode,
-        trackingUrl: flyer.trackingUrl,
-      });
-      const savedPdf = await saveGeneratedFlyerPdf({
-        campaignId: params.campaignId,
-        shortcode: flyer.shortcode,
-        bytes: new Uint8Array(renderedPdf),
-      });
-
-      return await prisma.flyer.update({
-        where: {
-          id: flyer.id,
-        },
-        data: {
-          generatedPdfStorageKey: savedPdf.storageKey,
-        },
-        select: {
-          id: true,
-        },
-      });
+      return flyer;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -222,6 +164,58 @@ async function createSingleFlyer(params: {
   throw new Error("Could not generate a unique flyer identifier. Please retry.");
 }
 
+async function createFlyerSheet(params: {
+  workspaceId: string;
+  campaignId: string;
+  template: FlyerTemplate;
+  placements: TemplateQrPlacement[];
+  quantity: number;
+}) {
+  const flyers: Array<{
+    id: string;
+    shortcode: string;
+    trackingUrl: string;
+  }> = [];
+
+  for (let index = 0; index < params.quantity; index += 1) {
+    flyers.push(
+      await createFlyerRecordWithUniqueShortcode({
+        workspaceId: params.workspaceId,
+        campaignId: params.campaignId,
+        template: params.template,
+      }),
+    );
+  }
+
+  const renderedPdf = await renderPrintableFlyerPdf({
+    template: params.template,
+    flyerPlacements: flyers.map((flyer, index) => ({
+      flyer,
+      placement: params.placements[index],
+    })),
+  });
+  const savedPdf = await saveGeneratedFlyerPdf({
+    campaignId: params.campaignId,
+    shortcode: flyers[0].shortcode,
+    bytes: new Uint8Array(renderedPdf),
+  });
+
+  await prisma.flyer.updateMany({
+    where: {
+      id: {
+        in: flyers.map((flyer) => flyer.id),
+      },
+    },
+    data: {
+      generatedPdfStorageKey: savedPdf.storageKey,
+    },
+  });
+
+  return flyers.map((flyer) => ({
+    id: flyer.id,
+  }));
+}
+
 export async function generateCampaignFlyers(params: {
   workspaceId: string;
   campaignId: string;
@@ -229,14 +223,22 @@ export async function generateCampaignFlyers(params: {
   quantity: number;
 }) {
   const createdFlyers: Array<{ id: string }> = [];
+  const placements = getStoredTemplateQrPlacements(params.template);
 
-  for (let index = 0; index < params.quantity; index += 1) {
-    const flyer = await createSingleFlyer({
+  if (placements.length === 0) {
+    throw new Error("Template QR placement is incomplete.");
+  }
+
+  for (let index = 0; index < params.quantity; index += placements.length) {
+    const sheetQuantity = Math.min(placements.length, params.quantity - index);
+    const flyers = await createFlyerSheet({
       workspaceId: params.workspaceId,
       campaignId: params.campaignId,
       template: params.template,
+      placements: placements.slice(0, sheetQuantity),
+      quantity: sheetQuantity,
     });
-    createdFlyers.push(flyer);
+    createdFlyers.push(...flyers);
   }
 
   return createdFlyers;
@@ -265,6 +267,7 @@ export async function getWorkspaceTemplateForCampaign(params: {
       qrY: true,
       qrWidth: true,
       qrHeight: true,
+      qrPlacements: true,
       shortTextEnabled: true,
       shortTextOffsetX: true,
       shortTextOffsetY: true,

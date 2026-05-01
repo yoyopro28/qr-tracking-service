@@ -109,6 +109,7 @@ model Template {
   qrY               Decimal?  @map("qr_y") @db.Decimal(10, 2)
   qrWidth           Decimal?  @map("qr_width") @db.Decimal(10, 2)
   qrHeight          Decimal?  @map("qr_height") @db.Decimal(10, 2)
+  qrPlacements      Json?     @map("qr_placements")
   shortTextEnabled  Boolean   @default(false) @map("short_text_enabled")
   shortTextOffsetX  Decimal?  @map("short_text_offset_x") @db.Decimal(10, 2)
   shortTextOffsetY  Decimal?  @map("short_text_offset_y") @db.Decimal(10, 2)

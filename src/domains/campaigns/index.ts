@@ -92,6 +92,7 @@ export async function getWorkspaceCampaignById(workspaceId: string, campaignId: 
           qrY: true,
           qrWidth: true,
           qrHeight: true,
+          qrPlacements: true,
           shortTextEnabled: true,
           shortTextOffsetX: true,
           shortTextOffsetY: true,

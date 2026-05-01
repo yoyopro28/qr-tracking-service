@@ -11,6 +11,7 @@ import {
   type FlyerGenerationFormValues,
   validateFlyerGenerationInput,
 } from "@/domains/flyers";
+import { getStoredTemplateQrPlacements } from "@/domains/templates";
 import { resolveDemoWorkspace } from "@/domains/workspaces";
 
 export type FlyerGenerationActionState = {
@@ -65,13 +66,7 @@ export async function generateFlyersAction(
       };
     }
 
-    if (
-      template.qrPageNumber === null ||
-      template.qrX === null ||
-      template.qrY === null ||
-      template.qrWidth === null ||
-      template.qrHeight === null
-    ) {
+    if (getStoredTemplateQrPlacements(template).length === 0) {
       return {
         values: validation.values,
         formError: "The selected template needs a saved QR placement before flyers can be generated.",

@@ -7,6 +7,7 @@ export const emptyTemplateActionState: TemplateActionState = {
     qrY: "",
     qrWidth: "",
     qrHeight: "",
+    qrPlacements: "",
     shortTextEnabled: false,
     shortTextOffsetX: "",
     shortTextOffsetY: "",

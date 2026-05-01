@@ -7,6 +7,7 @@ import { QRCodeViewer } from "./qr-code-viewer";
 
 type FlyerCardProps = {
   deleteAction: (formData: FormData) => Promise<void> | void;
+  sheetShortcodes?: string[];
   flyer: {
     id: string;
     shortcode: string;
@@ -27,8 +28,11 @@ const flyerDateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export function FlyerCard({ deleteAction, flyer }: FlyerCardProps) {
+export function FlyerCard({ deleteAction, flyer, sheetShortcodes }: FlyerCardProps) {
   const [showQRCode, setShowQRCode] = useState(false);
+  const visibleSheetShortcodes =
+    sheetShortcodes && sheetShortcodes.length > 0 ? sheetShortcodes : [flyer.shortcode];
+  const hasMultipleQrsOnPdf = visibleSheetShortcodes.length > 1;
 
   return (
     <article className="campaignCard">
@@ -36,11 +40,15 @@ export function FlyerCard({ deleteAction, flyer }: FlyerCardProps) {
         <span className="statusBadge">{flyer.status.toLowerCase()}</span>
         <span className="metaText">{flyer.template.originalFilename}</span>
       </div>
-      <h3>{flyer.shortcode}</h3>
+      <h3>{hasMultipleQrsOnPdf ? visibleSheetShortcodes.join(" · ") : flyer.shortcode}</h3>
 
       <dl className="miniDetailList">
         <div>
-          <dt>Tracking URL</dt>
+          <dt>{hasMultipleQrsOnPdf ? "QR IDs on PDF" : "QR ID"}</dt>
+          <dd className="breakValue">{visibleSheetShortcodes.join(", ")}</dd>
+        </div>
+        <div>
+          <dt>{hasMultipleQrsOnPdf ? "This card tracking URL" : "Tracking URL"}</dt>
           <dd className="breakValue">{flyer.trackingUrl}</dd>
         </div>
         <div>

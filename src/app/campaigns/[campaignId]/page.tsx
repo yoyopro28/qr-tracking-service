@@ -16,6 +16,7 @@ import { FlyerCard } from "@/components/flyers/flyer-card";
 import { AppShell } from "@/components/layout/app-shell";
 import { TemplateUploadForm } from "@/components/templates/template-upload-form";
 import { getWorkspaceCampaignById } from "@/domains/campaigns";
+import { getStoredTemplateQrPlacements } from "@/domains/templates";
 import { resolveDemoWorkspace } from "@/domains/workspaces";
 import { createTemplateAction } from "@/app/campaigns/[campaignId]/template-actions";
 import { emptyTemplateActionState } from "@/app/campaigns/[campaignId]/template-form-state";
@@ -59,6 +60,16 @@ export default async function CampaignDetailPage({
   const updateAction = updateCampaignAction.bind(null, campaign.id);
   const templateAction = createTemplateAction.bind(null, campaign.id);
   const flyerAction = generateFlyersAction.bind(null, campaign.id);
+  const sheetShortcodesByStorageKey = new Map<string, string[]>();
+
+  for (const flyer of campaign.flyers) {
+    const sheetKey = flyer.generatedPdfStorageKey ?? flyer.id;
+    const sheetShortcodes = sheetShortcodesByStorageKey.get(sheetKey) ?? [];
+
+    sheetShortcodes.push(flyer.shortcode);
+    sheetShortcodesByStorageKey.set(sheetKey, sheetShortcodes);
+  }
+
   const flashMessage = query.created
     ? "Campaign created successfully."
     : query.updated
@@ -141,7 +152,7 @@ export default async function CampaignDetailPage({
             <div>
               <h2>Templates</h2>
               <p className="sectionCopy">
-                One PDF upload with one QR placement definition per template for this MVP.
+                One PDF upload can contain one or more QR placeholders for print layouts.
               </p>
             </div>
             <span className="metricPill">
@@ -160,7 +171,10 @@ export default async function CampaignDetailPage({
             </div>
           ) : (
             <div className="campaignList">
-              {campaign.templates.map((template) => (
+              {campaign.templates.map((template) => {
+                const qrPlacements = getStoredTemplateQrPlacements(template);
+
+                return (
                 <article key={template.id} className="campaignCard">
                   <div className="cardTopline">
                     <span className="statusBadge">pdf template</span>
@@ -179,11 +193,11 @@ export default async function CampaignDetailPage({
                       <dd>{template.pageCount}</dd>
                     </div>
                     <div>
-                      <dt>QR placement</dt>
+                      <dt>QR placeholders</dt>
                       <dd>
-                        Page {template.qrPageNumber ?? "?"}, x {template.qrX?.toString() ?? "-"},
-                        y {template.qrY?.toString() ?? "-"}, w {template.qrWidth?.toString() ?? "-"},
-                        h {template.qrHeight?.toString() ?? "-"}
+                        {qrPlacements.length > 0
+                          ? `${qrPlacements.length} ${qrPlacements.length === 1 ? "area" : "areas"} on page ${qrPlacements[0].pageNumber}`
+                          : "Not set"}
                       </dd>
                     </div>
                     <div>
@@ -204,11 +218,7 @@ export default async function CampaignDetailPage({
                     >
                       Open template PDF
                     </a>
-                    {template.qrPageNumber !== null &&
-                    template.qrX !== null &&
-                    template.qrY !== null &&
-                    template.qrWidth !== null &&
-                    template.qrHeight !== null ? (
+                    {qrPlacements.length > 0 ? (
                       <a
                         className="textLink"
                         href={`/api/templates/${template.id}/print-preview`}
@@ -220,7 +230,8 @@ export default async function CampaignDetailPage({
                     ) : null}
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -264,6 +275,9 @@ export default async function CampaignDetailPage({
                 <FlyerCard
                   key={flyer.id}
                   flyer={flyer}
+                  sheetShortcodes={
+                    sheetShortcodesByStorageKey.get(flyer.generatedPdfStorageKey ?? flyer.id)
+                  }
                   deleteAction={deleteFlyerAction.bind(null, campaign.id, flyer.id)}
                 />
               ))}
