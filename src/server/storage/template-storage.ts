@@ -1,18 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-
-const TEMPLATE_UPLOAD_ROOT = path.join(process.cwd(), "uploads", "templates");
+import {
+  buildStorageKey,
+  buildUploadPath,
+  resolveUploadStoragePath,
+} from "./upload-storage";
 
 export function resolveTemplateStoragePath(storageKey: string) {
-  const absolutePath = path.resolve(process.cwd(), storageKey);
-  const uploadsRoot = path.resolve(process.cwd(), "uploads");
-
-  if (!absolutePath.startsWith(uploadsRoot)) {
-    throw new Error("Invalid template path.");
-  }
-
-  return absolutePath;
+  return resolveUploadStoragePath(storageKey);
 }
 
 export async function saveTemplateUpload(params: {
@@ -28,9 +24,9 @@ export async function saveTemplateUpload(params: {
     .slice(0, 48);
 
   const fileName = `${sanitizedBaseName || "template"}-${randomUUID()}.pdf`;
-  const directory = path.join(TEMPLATE_UPLOAD_ROOT, params.campaignId);
+  const directory = buildUploadPath("templates", params.campaignId);
   const absolutePath = path.join(directory, fileName);
-  const storageKey = path.relative(process.cwd(), absolutePath);
+  const storageKey = buildStorageKey(absolutePath);
 
   await mkdir(directory, { recursive: true });
   await writeFile(absolutePath, params.bytes);

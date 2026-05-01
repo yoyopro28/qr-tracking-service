@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && npm run prepare:standalone",
+    "prepare:standalone": "node scripts/prepare-standalone.mjs",
+    "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",

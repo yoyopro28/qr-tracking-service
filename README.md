@@ -1,39 +1,27 @@
 # QR Tracking Service
 
-Foundation setup for the QR tracking and PDF print service described in the repository Markdown specs. This stage provides the application scaffold, Prisma schema, PostgreSQL wiring, modular source layout, and local setup documentation. It does not yet implement business features such as authentication flows, campaign CRUD, template upload, flyer generation, activation, redirect tracking, or analytics.
+Solo-ready QR tracking and PDF print service built with Next.js, TypeScript,
+Prisma, PostgreSQL, and local/persistent filesystem storage.
+
+The current app supports the MVP workflow:
+
+- create and manage campaigns
+- upload PDF templates and define QR placement
+- generate print-ready flyer PDFs with per-flyer QR codes
+- activate flyers for locations
+- track public QR redirects through `/r/[shortcode]`
+- view basic scan analytics
+
+Admin-facing routes are protected with HTTP Basic Auth. Public QR redirects stay
+open so printed flyer links can be scanned without a login.
 
 ## Stack
 
-- Next.js with App Router
+- Next.js App Router
 - TypeScript in strict mode
 - Prisma ORM
 - PostgreSQL
-
-## Project Structure
-
-```text
-.
-├── prisma/
-│   ├── migrations/
-│   └── schema.prisma
-├── src/
-│   ├── app/
-│   ├── components/
-│   ├── domains/
-│   ├── lib/
-│   └── server/
-├── docker-compose.yml
-└── README.md
-```
-
-### Structure Notes
-
-- `src/app`: Next.js routes, layouts, and page entrypoints
-- `src/components`: shared UI and layout building blocks
-- `src/domains`: reserved boundaries for domain-specific logic
-- `src/lib`: shared utilities such as env parsing and the Prisma client
-- `src/server`: backend-oriented code that should stay out of UI components
-- `prisma`: schema and migrations
+- Filesystem storage for uploaded templates and generated flyer PDFs
 
 ## Local Development
 
@@ -51,26 +39,37 @@ npm install
 
 ### 3. Configure environment variables
 
-Copy the example file and adjust values if needed:
-
 ```bash
 cp .env.example .env
 ```
 
-Default values expect a local PostgreSQL database at `localhost:5432`.
+For local development, the defaults expect PostgreSQL at `localhost:5432` and
+store files under `./uploads`.
+
+Required variables:
+
+```bash
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/qr_tracking_service?schema=public"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="change-me-before-production"
+UPLOADS_DIR="./uploads"
+```
+
+`NEXT_PUBLIC_APP_URL` is embedded into flyer tracking URLs when flyers are
+generated. If this value changes, generate new flyers before printing real QR
+codes.
 
 ### 4. Start PostgreSQL
-
-If you are using Docker:
 
 ```bash
 docker compose up -d
 ```
 
-### 5. Apply the initial database migration
+### 5. Apply migrations
 
 ```bash
-npx prisma migrate dev
+npm run db:migrate
 ```
 
 ### 6. Start the app
@@ -79,13 +78,15 @@ npx prisma migrate dev
 npm run dev
 ```
 
-The app should then be available at `http://localhost:3000`.
+Open `http://localhost:3000` and sign in with the Basic Auth credentials from
+`.env`.
 
 ## Useful Commands
 
 ```bash
 npm run dev
 npm run build
+npm run start
 npm run lint
 npm run db:generate
 npm run db:migrate
@@ -93,23 +94,92 @@ npm run db:deploy
 npm run db:studio
 ```
 
-## Current Status
+Use `npm run db:deploy` for production-style migration deploys. Use
+`npm run db:migrate` only in local development.
 
-Implemented in this foundation step:
-- runnable Next.js project scaffold
-- minimal base layout and home page
-- Prisma schema for the documented MVP core entities
-- initial migration checked into the repository
-- environment and local database setup
-- modular source boundaries for future tickets
+## Railway Deployment
 
-Deliberately not implemented yet:
-- auth provider integration
-- workspace context enforcement
-- campaign CRUD
-- file storage
-- PDF processing
-- QR generation
-- flyer activation
-- redirect tracking
-- analytics queries and dashboard features
+Recommended first production setup for solo use:
+
+1. Push the repository to GitHub.
+2. Create a Railway project from the GitHub repository.
+3. Add a PostgreSQL service in the same Railway project.
+4. Add a persistent volume to the Next.js app service.
+5. Set the volume mount path to `/data/uploads`.
+6. Set app service environment variables:
+
+```bash
+DATABASE_URL=<reference the Railway Postgres DATABASE_URL>
+NEXT_PUBLIC_APP_URL=https://your-domain.example
+ADMIN_USERNAME=<your-admin-user>
+ADMIN_PASSWORD=<strong-password>
+UPLOADS_DIR=/data/uploads
+```
+
+7. Set the Railway pre-deploy command:
+
+```bash
+npx prisma migrate deploy
+```
+
+8. Deploy the app service.
+9. Add your custom domain in Railway and point DNS at Railway as instructed by
+   the Railway dashboard.
+10. Generate and print real flyers only after the final domain is configured.
+
+The app builds as a Next.js standalone server. `npm run build` runs `next build`
+and copies `public` plus `.next/static` into `.next/standalone`; `npm run start`
+runs `.next/standalone/server.js`.
+
+## Route Protection
+
+Protected by Basic Auth:
+
+- `/`
+- `/campaigns`
+- `/admin`
+- `/analytics`
+- `/api/qr`
+- `/api/templates`
+- `/api/flyers`
+
+Public:
+
+- `/r/[shortcode]`
+- `/_next/*`
+- static assets
+
+This is intentionally a lightweight solo-user guard, not a full multi-user auth
+system. Do not run production without setting a strong `ADMIN_PASSWORD`.
+
+## Storage
+
+Uploaded templates and generated flyer PDFs are stored below `UPLOADS_DIR`.
+
+- Local default: `./uploads`
+- Railway volume recommendation: `/data/uploads`
+
+Database records store relative storage keys such as
+`templates/<campaign-id>/<file>.pdf` and
+`generated-flyers/<campaign-id>/<file>.pdf`. Older local keys beginning with
+`uploads/...` are still resolved for compatibility.
+
+Back up both:
+
+- the PostgreSQL database
+- the persistent upload volume
+
+Losing either one can break campaign history or generated PDF downloads.
+
+## Production Smoke Test
+
+After deploying:
+
+1. Open the app domain and confirm Basic Auth is required.
+2. Create one campaign.
+3. Upload one PDF template and save QR placement.
+4. Generate one flyer.
+5. Open the generated flyer PDF.
+6. Open `/r/<shortcode>` without Basic Auth and confirm it redirects.
+7. Reopen analytics and confirm the scan was recorded.
+8. Redeploy once and confirm database records and PDFs still exist.
