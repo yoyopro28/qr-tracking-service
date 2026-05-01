@@ -27,6 +27,10 @@ type ZoomMediaTrackCapabilities = MediaTrackCapabilities & {
   };
 };
 
+type ZoomMediaTrackConstraintSet = MediaTrackConstraintSet & {
+  zoom?: number;
+};
+
 type ScannerStatus = "idle" | "starting" | "scanning" | "detected" | "unsupported" | "error";
 
 const SHORTCODE_PATTERN = /^[A-Z0-9]{4,32}$/;
@@ -130,13 +134,17 @@ async function minimizeTrackZoom(stream: MediaStream) {
   }
 
   try {
-    await track.applyConstraints({
+    const constraints: MediaTrackConstraints & {
+      advanced: ZoomMediaTrackConstraintSet[];
+    } = {
       advanced: [
         {
           zoom: minZoom,
         },
       ],
-    } as MediaTrackConstraints);
+    };
+
+    await track.applyConstraints(constraints);
   } catch {
     // Some mobile browsers expose zoom capability but reject the constraint.
   }
