@@ -32,13 +32,20 @@ export async function GET(
       return new NextResponse("Generated flyer PDF not found", { status: 404 });
     }
 
+    const batchQrCount = await prisma.flyer.count({
+      where: {
+        workspaceId: workspace.id,
+        generatedPdfStorageKey: flyer.generatedPdfStorageKey,
+      },
+    });
     const absolutePath = resolveTemplateStoragePath(flyer.generatedPdfStorageKey);
     const file = await readFile(absolutePath);
+    const filePrefix = batchQrCount > 1 ? "batch" : "flyer";
 
     return new NextResponse(file, {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `inline; filename="flyer-${flyer.shortcode}.pdf"`,
+        "content-disposition": `inline; filename="${filePrefix}-${flyer.shortcode}.pdf"`,
       },
     });
   } catch (error) {

@@ -60,15 +60,68 @@ export default async function CampaignDetailPage({
   const updateAction = updateCampaignAction.bind(null, campaign.id);
   const templateAction = createTemplateAction.bind(null, campaign.id);
   const flyerAction = generateFlyersAction.bind(null, campaign.id);
-  const sheetShortcodesByStorageKey = new Map<string, string[]>();
+  const flyersByStorageKey = new Map<string, typeof campaign.flyers>();
+  const templateQrCountById = new Map(
+    campaign.templates.map((template) => [
+      template.id,
+      getStoredTemplateQrPlacements(template).length,
+    ]),
+  );
 
   for (const flyer of campaign.flyers) {
-    const sheetKey = flyer.generatedPdfStorageKey ?? flyer.id;
-    const sheetShortcodes = sheetShortcodesByStorageKey.get(sheetKey) ?? [];
+    const storageKey = flyer.generatedPdfStorageKey ?? flyer.id;
+    const flyers = flyersByStorageKey.get(storageKey) ?? [];
 
-    sheetShortcodes.push(flyer.shortcode);
-    sheetShortcodesByStorageKey.set(sheetKey, sheetShortcodes);
+    flyers.push(flyer);
+    flyersByStorageKey.set(storageKey, flyers);
   }
+
+  const generatedBatches = Array.from(flyersByStorageKey.entries()).flatMap(
+    ([storageKey, flyers]) => {
+      const primaryFlyer = flyers[0];
+
+      if (!primaryFlyer) {
+        return [];
+      }
+
+      return [
+        {
+          storageKey,
+          batch: {
+            documentFlyerId: primaryFlyer.id,
+            generatedAt: flyers.reduce((earliestDate, flyer) => {
+              const flyerDate = flyer.generatedAt ?? flyer.createdAt;
+
+              return flyerDate < earliestDate ? flyerDate : earliestDate;
+            }, primaryFlyer.generatedAt ?? primaryFlyer.createdAt),
+            physicalFlyerCount: Math.ceil(
+              flyers.length /
+                Math.max(templateQrCountById.get(primaryFlyer.template.id) ?? flyers.length, 1),
+            ),
+            qrCodesPerPdfPage: Math.max(
+              templateQrCountById.get(primaryFlyer.template.id) ?? flyers.length,
+              1,
+            ),
+            activatedCount: flyers.filter((flyer) => flyer.status === "ACTIVATED").length,
+            totalQrCount: flyers.length,
+            templateFilename: primaryFlyer.template.originalFilename,
+          },
+          qrCodes: flyers.map((flyer) => ({
+            id: flyer.id,
+            shortcode: flyer.shortcode,
+            trackingUrl: flyer.trackingUrl,
+            status: flyer.status,
+          })),
+        },
+      ];
+    },
+  );
+  const generatedBatchCount = generatedBatches.length;
+  const generatedFlyerCount = generatedBatches.reduce(
+    (count, { batch }) => count + batch.physicalFlyerCount,
+    0,
+  );
+  const uniqueQrCount = campaign.flyers.length;
 
   const flashMessage = query.created
     ? "Campaign created successfully."
@@ -250,20 +303,22 @@ export default async function CampaignDetailPage({
         <section className="panel">
           <div className="sectionHeader">
             <div>
-              <h2>Generated flyers</h2>
+              <h2>Generated batches</h2>
               <p className="sectionCopy">
-                Flyer records are stored now. QR embedding, printable PDFs, and
-                activation are still separate MVP steps.
+                Each batch PDF contains the flyers and unique QR codes from one
+                generation run.
               </p>
             </div>
             <span className="metricPill">
-              {campaign.flyers.length} {campaign.flyers.length === 1 ? "flyer" : "flyers"}
+              {generatedBatchCount} {generatedBatchCount === 1 ? "batch" : "batches"} ·{" "}
+              {generatedFlyerCount} {generatedFlyerCount === 1 ? "flyer" : "flyers"} ·{" "}
+              {uniqueQrCount} unique QR{uniqueQrCount === 1 ? "" : "s"}
             </span>
           </div>
 
-          {campaign.flyers.length === 0 ? (
+          {generatedBatches.length === 0 ? (
             <div className="emptyState">
-              <h3>No flyers yet</h3>
+              <h3>No batches yet</h3>
               <p>
                 Generate the first batch to create stable shortcodes and tracking URLs
                 for this campaign.
@@ -271,14 +326,16 @@ export default async function CampaignDetailPage({
             </div>
           ) : (
             <div className="campaignList">
-              {campaign.flyers.map((flyer) => (
+              {generatedBatches.map(({ storageKey, batch, qrCodes }) => (
                 <FlyerCard
-                  key={flyer.id}
-                  flyer={flyer}
-                  sheetShortcodes={
-                    sheetShortcodesByStorageKey.get(flyer.generatedPdfStorageKey ?? flyer.id)
-                  }
-                  deleteAction={deleteFlyerAction.bind(null, campaign.id, flyer.id)}
+                  key={storageKey}
+                  batch={batch}
+                  qrCodes={qrCodes}
+                  deleteAction={deleteFlyerAction.bind(
+                    null,
+                    campaign.id,
+                    batch.documentFlyerId,
+                  )}
                 />
               ))}
             </div>

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 import { generateQRCode } from "@/lib/qr-code";
 import { resolveTemplateStoragePath } from "@/server/storage/template-storage";
 
@@ -24,6 +24,16 @@ export type QrPlacementRenderItem = {
   qrContent: string;
   qrPlacement: QrPlacement;
   shortText: ShortTextPlacement;
+};
+
+type NormalizedQrPlacementRenderItem = QrPlacementRenderItem & {
+  pageIndex: number;
+  placement: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 };
 
 export type QrPlacementRenderErrorCode =
@@ -129,14 +139,83 @@ export async function renderTemplatePdfWithQrPlacements(params: {
   sourceHeight: NumericPdfValue;
   items: QrPlacementRenderItem[];
 }) {
-  if (params.items.length === 0) {
+  const normalizedItems = normalizeRenderItems(params.items);
+  const templateBytes = await readFile(resolveTemplateStoragePath(params.templateStorageKey));
+  const pdfDocument = await PDFDocument.load(templateBytes);
+  const pageCount = pdfDocument.getPageCount();
+  const font = normalizedItems.some((item) => item.shortText.enabled)
+    ? await pdfDocument.embedFont(StandardFonts.Helvetica)
+    : null;
+
+  await drawQrPlacementRenderItems({
+    pdfDocument,
+    items: normalizedItems,
+    pageCount,
+    pageOffset: 0,
+    sourceWidth: params.sourceWidth,
+    sourceHeight: params.sourceHeight,
+    font,
+  });
+
+  return pdfDocument.save();
+}
+
+export async function renderTemplatePdfBatchWithQrPlacements(params: {
+  templateStorageKey: string;
+  sourceWidth: NumericPdfValue;
+  sourceHeight: NumericPdfValue;
+  sheets: QrPlacementRenderItem[][];
+}) {
+  if (params.sheets.length === 0) {
     throw new QrPlacementRenderError(
       "Template QR placement is incomplete: no QR placeholders are defined.",
       "INCOMPLETE_PLACEMENT",
     );
   }
 
-  const normalizedItems = params.items.map((item) => {
+  const normalizedSheets = params.sheets.map((sheet) => normalizeRenderItems(sheet));
+  const templateBytes = await readFile(resolveTemplateStoragePath(params.templateStorageKey));
+  const templateDocument = await PDFDocument.load(templateBytes);
+  const batchDocument = await PDFDocument.create();
+  const templatePageCount = templateDocument.getPageCount();
+  const templatePageIndices = templateDocument.getPageIndices();
+  const font = normalizedSheets.some((sheet) =>
+    sheet.some((item) => item.shortText.enabled),
+  )
+    ? await batchDocument.embedFont(StandardFonts.Helvetica)
+    : null;
+
+  for (const sheet of normalizedSheets) {
+    const pageOffset = batchDocument.getPageCount();
+    const copiedPages = await batchDocument.copyPages(templateDocument, templatePageIndices);
+
+    for (const page of copiedPages) {
+      batchDocument.addPage(page);
+    }
+
+    await drawQrPlacementRenderItems({
+      pdfDocument: batchDocument,
+      items: sheet,
+      pageCount: templatePageCount,
+      pageOffset,
+      sourceWidth: params.sourceWidth,
+      sourceHeight: params.sourceHeight,
+      font,
+    });
+  }
+
+  return batchDocument.save();
+}
+
+function normalizeRenderItems(items: QrPlacementRenderItem[]) {
+  if (items.length === 0) {
+    throw new QrPlacementRenderError(
+      "Template QR placement is incomplete: no QR placeholders are defined.",
+      "INCOMPLETE_PLACEMENT",
+    );
+  }
+
+  return items.map((item) => {
     if (item.qrPlacement.pageNumber === null) {
       throw new QrPlacementRenderError(
         "Template QR placement is incomplete: page number is missing.",
@@ -155,23 +234,26 @@ export async function renderTemplatePdfWithQrPlacements(params: {
       },
     };
   });
+}
 
-  const templateBytes = await readFile(resolveTemplateStoragePath(params.templateStorageKey));
-  const pdfDocument = await PDFDocument.load(templateBytes);
-  const pageCount = pdfDocument.getPageCount();
-  const font = normalizedItems.some((item) => item.shortText.enabled)
-    ? await pdfDocument.embedFont(StandardFonts.Helvetica)
-    : null;
-
-  for (const item of normalizedItems) {
-    if (item.pageIndex >= pageCount) {
+async function drawQrPlacementRenderItems(params: {
+  pdfDocument: PDFDocument;
+  items: NormalizedQrPlacementRenderItem[];
+  pageCount: number;
+  pageOffset: number;
+  sourceWidth: NumericPdfValue;
+  sourceHeight: NumericPdfValue;
+  font: PDFFont | null;
+}) {
+  for (const item of params.items) {
+    if (item.pageIndex >= params.pageCount) {
       throw new QrPlacementRenderError(
         "Configured QR page could not be found in the PDF.",
         "PAGE_NOT_FOUND",
       );
     }
 
-    const page = pdfDocument.getPage(item.pageIndex);
+    const page = params.pdfDocument.getPage(params.pageOffset + item.pageIndex);
     const pageSize = page.getSize();
     const sourceWidth = toNumber(params.sourceWidth) ?? pageSize.width;
     const sourceHeight = toNumber(params.sourceHeight) ?? pageSize.height;
@@ -185,7 +267,7 @@ export async function renderTemplatePdfWithQrPlacements(params: {
     const qrImageBytes = await generateQRCode(item.qrContent, "image/png", {
       transparent: true,
     });
-    const qrImage = await pdfDocument.embedPng(qrImageBytes);
+    const qrImage = await params.pdfDocument.embedPng(qrImageBytes);
 
     page.drawImage(qrImage, {
       x: target.x,
@@ -194,16 +276,14 @@ export async function renderTemplatePdfWithQrPlacements(params: {
       height: target.height,
     });
 
-    if (item.shortText.enabled && font) {
+    if (item.shortText.enabled && params.font) {
       page.drawText(item.shortText.label, {
         x: target.x + (toNumber(item.shortText.offsetX) ?? 0) * target.scaleX,
         y: target.y - 12 - (toNumber(item.shortText.offsetY) ?? 0) * target.scaleY,
         size: 10,
-        font,
+        font: params.font,
         color: rgb(0.15, 0.17, 0.2),
       });
     }
   }
-
-  return pdfDocument.save();
 }

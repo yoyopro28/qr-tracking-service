@@ -21,7 +21,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 
   return (
     <button className="button" type="submit" disabled={disabled || pending}>
-      {pending ? "Generating..." : "Generate flyers"}
+      {pending ? "Generating..." : "Generate batch PDF"}
     </button>
   );
 }
@@ -52,8 +52,8 @@ export function FlyerGenerationForm({
         <div>
           <h2>Generate flyers</h2>
           <p className="sectionCopy">
-            Pick a template and create one unique shortcode per printed flyer area.
-            Multi-up templates fill their QR placeholders in order.
+            Enter the number of physical flyers. One batch PDF is generated with a
+            unique QR code for every placeholder on every flyer.
           </p>
         </div>
       </div>
@@ -83,7 +83,7 @@ export function FlyerGenerationForm({
           </label>
 
           <label className="field">
-            <span className="fieldLabel">Quantity</span>
+            <span className="fieldLabel">Flyer quantity</span>
             <input
               className="input"
               type="number"

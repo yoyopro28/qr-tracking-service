@@ -3,7 +3,7 @@ import { FlyerStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { appConfig } from "@/server/config/app-config";
 import { saveGeneratedFlyerPdf } from "@/server/storage/generated-flyer-storage";
-import { renderTemplatePdfWithQrPlacements } from "@/server/pdf/qr-placement-renderer";
+import { renderTemplatePdfBatchWithQrPlacements } from "@/server/pdf/qr-placement-renderer";
 import {
   getStoredTemplateQrPlacements,
   type TemplateQrPlacement,
@@ -38,6 +38,12 @@ type FlyerTemplate = {
   shortTextEnabled: boolean;
   shortTextOffsetX: Prisma.Decimal | number | null;
   shortTextOffsetY: Prisma.Decimal | number | null;
+};
+
+type CreatedFlyerRecord = {
+  id: string;
+  shortcode: string;
+  trackingUrl: string;
 };
 
 export function validateFlyerGenerationInput(values: FlyerGenerationFormValues) {
@@ -86,36 +92,38 @@ function generateShortcode() {
     .slice(0, SHORTCODE_LENGTH);
 }
 
-async function renderPrintableFlyerPdf(params: {
+async function renderPrintableFlyerBatchPdf(params: {
   template: FlyerTemplate;
-  flyerPlacements: Array<{
+  flyerPlacementSheets: Array<Array<{
     flyer: {
       shortcode: string;
       trackingUrl: string;
     };
     placement: TemplateQrPlacement;
-  }>;
+  }>>;
 }) {
-  return renderTemplatePdfWithQrPlacements({
+  return renderTemplatePdfBatchWithQrPlacements({
     templateStorageKey: params.template.storageKey,
     sourceWidth: params.template.width,
     sourceHeight: params.template.height,
-    items: params.flyerPlacements.map(({ flyer, placement }) => ({
-      qrContent: flyer.trackingUrl,
-      qrPlacement: {
-        pageNumber: placement.pageNumber,
-        x: placement.x,
-        y: placement.y,
-        width: placement.width,
-        height: placement.height,
-      },
-      shortText: {
-        enabled: params.template.shortTextEnabled,
-        label: flyer.shortcode,
-        offsetX: params.template.shortTextOffsetX,
-        offsetY: params.template.shortTextOffsetY,
-      },
-    })),
+    sheets: params.flyerPlacementSheets.map((flyerPlacements) =>
+      flyerPlacements.map(({ flyer, placement }) => ({
+        qrContent: flyer.trackingUrl,
+        qrPlacement: {
+          pageNumber: placement.pageNumber,
+          x: placement.x,
+          y: placement.y,
+          width: placement.width,
+          height: placement.height,
+        },
+        shortText: {
+          enabled: params.template.shortTextEnabled,
+          label: flyer.shortcode,
+          offsetX: params.template.shortTextOffsetX,
+          offsetY: params.template.shortTextOffsetY,
+        },
+      })),
+    ),
   });
 }
 
@@ -164,20 +172,15 @@ async function createFlyerRecordWithUniqueShortcode(params: {
   throw new Error("Could not generate a unique flyer identifier. Please retry.");
 }
 
-async function createFlyerSheet(params: {
+async function createPhysicalFlyerRecords(params: {
   workspaceId: string;
   campaignId: string;
   template: FlyerTemplate;
   placements: TemplateQrPlacement[];
-  quantity: number;
 }) {
-  const flyers: Array<{
-    id: string;
-    shortcode: string;
-    trackingUrl: string;
-  }> = [];
+  const flyers: CreatedFlyerRecord[] = [];
 
-  for (let index = 0; index < params.quantity; index += 1) {
+  for (let index = 0; index < params.placements.length; index += 1) {
     flyers.push(
       await createFlyerRecordWithUniqueShortcode({
         workspaceId: params.workspaceId,
@@ -187,33 +190,7 @@ async function createFlyerSheet(params: {
     );
   }
 
-  const renderedPdf = await renderPrintableFlyerPdf({
-    template: params.template,
-    flyerPlacements: flyers.map((flyer, index) => ({
-      flyer,
-      placement: params.placements[index],
-    })),
-  });
-  const savedPdf = await saveGeneratedFlyerPdf({
-    campaignId: params.campaignId,
-    shortcode: flyers[0].shortcode,
-    bytes: new Uint8Array(renderedPdf),
-  });
-
-  await prisma.flyer.updateMany({
-    where: {
-      id: {
-        in: flyers.map((flyer) => flyer.id),
-      },
-    },
-    data: {
-      generatedPdfStorageKey: savedPdf.storageKey,
-    },
-  });
-
-  return flyers.map((flyer) => ({
-    id: flyer.id,
-  }));
+  return flyers;
 }
 
 export async function generateCampaignFlyers(params: {
@@ -222,26 +199,76 @@ export async function generateCampaignFlyers(params: {
   template: FlyerTemplate;
   quantity: number;
 }) {
-  const createdFlyers: Array<{ id: string }> = [];
+  const physicalFlyerSheets: CreatedFlyerRecord[][] = [];
   const placements = getStoredTemplateQrPlacements(params.template);
 
   if (placements.length === 0) {
     throw new Error("Template QR placement is incomplete.");
   }
 
-  for (let index = 0; index < params.quantity; index += placements.length) {
-    const sheetQuantity = Math.min(placements.length, params.quantity - index);
-    const flyers = await createFlyerSheet({
+  for (let index = 0; index < params.quantity; index += 1) {
+    const flyers = await createPhysicalFlyerRecords({
       workspaceId: params.workspaceId,
       campaignId: params.campaignId,
       template: params.template,
-      placements: placements.slice(0, sheetQuantity),
-      quantity: sheetQuantity,
+      placements,
     });
-    createdFlyers.push(...flyers);
+    physicalFlyerSheets.push(flyers);
   }
 
-  return createdFlyers;
+  const firstFlyer = physicalFlyerSheets[0]?.[0];
+
+  if (!firstFlyer) {
+    throw new Error("Template QR placement is incomplete.");
+  }
+
+  const createdFlyers = physicalFlyerSheets.flat();
+
+  try {
+    const renderedPdf = await renderPrintableFlyerBatchPdf({
+      template: params.template,
+      flyerPlacementSheets: physicalFlyerSheets.map((flyers) =>
+        flyers.map((flyer, index) => ({
+          flyer,
+          placement: placements[index],
+        })),
+      ),
+    });
+    const savedPdf = await saveGeneratedFlyerPdf({
+      campaignId: params.campaignId,
+      shortcode: `batch-${firstFlyer.shortcode}`,
+      bytes: new Uint8Array(renderedPdf),
+    });
+
+    await prisma.flyer.updateMany({
+      where: {
+        id: {
+          in: createdFlyers.map((flyer) => flyer.id),
+        },
+      },
+      data: {
+        generatedPdfStorageKey: savedPdf.storageKey,
+      },
+    });
+  } catch (error) {
+    try {
+      await prisma.flyer.deleteMany({
+        where: {
+          id: {
+            in: createdFlyers.map((flyer) => flyer.id),
+          },
+        },
+      });
+    } catch (cleanupError) {
+      console.error("Failed to clean up incomplete flyer batch", cleanupError);
+    }
+
+    throw error;
+  }
+
+  return createdFlyers.map((flyer) => ({
+    id: flyer.id,
+  }));
 }
 
 export async function getWorkspaceTemplateForCampaign(params: {
@@ -288,11 +315,23 @@ export async function deleteWorkspaceFlyer(params: {
     },
     select: {
       id: true,
+      generatedPdfStorageKey: true,
     },
   });
 
   if (!flyer) {
     throw new Error("Flyer not found in the active workspace.");
+  }
+
+  if (flyer.generatedPdfStorageKey) {
+    await prisma.flyer.deleteMany({
+      where: {
+        workspaceId: params.workspaceId,
+        campaignId: params.campaignId,
+        generatedPdfStorageKey: flyer.generatedPdfStorageKey,
+      },
+    });
+    return;
   }
 
   await prisma.flyer.delete({
