@@ -296,6 +296,48 @@ a {
   justify-content: flex-start;
 }
 
+.coordinateFields {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.coordinateActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.textButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.textButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.fieldHint,
+.successMessage {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.successMessage {
+  color: #176b61;
+}
+
 .checkboxField {
   display: flex;
   align-items: center;
@@ -785,6 +827,375 @@ a {
   word-break: break-word;
 }
 
+.locationManagementGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 1rem;
+}
+
+.locationManagementCard {
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface-strong);
+}
+
+.locationManagementCard h3 {
+  margin: 0 0 0.4rem;
+}
+
+.locationUsage {
+  margin: 0.75rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.locationCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.mapPanel {
+  overflow: hidden;
+}
+
+.scanMapFrame {
+  position: relative;
+  min-height: 460px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #e7e6df;
+}
+
+.scanMap {
+  width: 100%;
+  height: 460px;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.scanMapError {
+  position: absolute;
+  inset: auto 1rem 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 250, 242, 0.94);
+  color: var(--accent);
+  box-shadow: 0 10px 30px rgba(24, 34, 40, 0.14);
+}
+
+.mapEmptyState {
+  min-height: 320px;
+  display: grid;
+  place-content: center;
+  gap: 0.4rem;
+  padding: 2rem;
+  border: 1px dashed rgba(24, 34, 40, 0.2);
+  border-radius: 20px;
+  background: linear-gradient(145deg, #eceae3, #dedfd8);
+  color: var(--muted);
+  text-align: center;
+}
+
+.mapEmptyState strong {
+  color: var(--text);
+  font-size: 1.15rem;
+}
+
+.mapLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.2rem;
+  margin-top: 0.9rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.mapLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.scanPinMarker {
+  width: 62px;
+  height: 72px;
+}
+
+.scanPin {
+  position: relative;
+  width: 62px;
+  height: 72px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 9px 8px rgba(24, 34, 40, 0.24));
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.scanPin:hover,
+.scanPin:focus-visible {
+  transform: translateY(-4px) scale(1.06);
+  filter: drop-shadow(0 13px 11px rgba(24, 34, 40, 0.28));
+  outline: none;
+}
+
+.scanPinShape {
+  position: absolute;
+  left: 8px;
+  bottom: 10px;
+  width: 46px;
+  height: 46px;
+  transform: rotate(-45deg);
+  border: 3px solid #fffaf2;
+  border-radius: 50% 50% 50% 0;
+  background: #765c50;
+}
+
+.scanPinCount {
+  position: absolute;
+  left: 8px;
+  bottom: 17px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: #fffaf2;
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.scanPinBadge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 2px solid rgba(255, 250, 242, 0.96);
+  border-radius: 50%;
+  background: #fffaf2;
+  font-size: 1rem;
+  box-shadow: 0 5px 14px rgba(24, 34, 40, 0.2);
+}
+
+.scanPin--leader .scanPinShape {
+  background: linear-gradient(145deg, #e5a72d, #c8781f);
+}
+
+.scanPin--hot .scanPinShape {
+  background: linear-gradient(145deg, #d85c36, #a93625);
+}
+
+.scanPin--today .scanPinShape {
+  background: linear-gradient(145deg, #258c82, #176b61);
+}
+
+.scanPin--active .scanPinShape {
+  background: linear-gradient(145deg, #b04a2d, #84331f);
+}
+
+.scanPin--quiet .scanPinShape {
+  background: linear-gradient(145deg, #78858a, #526066);
+}
+
+.scanPin--archived {
+  opacity: 0.72;
+  filter: grayscale(0.6) drop-shadow(0 7px 7px rgba(24, 34, 40, 0.18));
+}
+
+.scanPinBadge--leader,
+.scanPinBadge--hot {
+  animation: scanPinBadgeFloat 1.8s ease-in-out infinite;
+}
+
+.scanPinBadge--today,
+.scanPinBadge--active {
+  animation: scanPinBadgePulse 2.2s ease-in-out infinite;
+}
+
+@keyframes scanPinBadgeFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(4deg);
+  }
+}
+
+@keyframes scanPinBadgePulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.scanMapPopup {
+  display: grid;
+  width: min(300px, calc(100vw - 4rem));
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.scanMapPopupHeader {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem 1rem 0.85rem;
+}
+
+.scanMapPopupPerformance {
+  width: fit-content;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scanMapPopupPerformance--leader {
+  background: rgba(229, 167, 45, 0.18);
+  color: #985919;
+}
+
+.scanMapPopupPerformance--today {
+  background: rgba(37, 140, 130, 0.14);
+  color: #176b61;
+}
+
+.scanMapPopupTitle {
+  padding-right: 1rem;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.scanMapPopupScope,
+.scanMapPopupEmpty {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.scanMapPopupMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgba(176, 74, 45, 0.035);
+}
+
+.scanMapPopupMetric {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 0.55rem;
+  text-align: center;
+}
+
+.scanMapPopupMetric + .scanMapPopupMetric {
+  border-left: 1px solid var(--line);
+}
+
+.scanMapPopupMetric strong {
+  font-size: 1.05rem;
+}
+
+.scanMapPopupMetric span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.scanMapPopupRecent {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.scanMapPopupSectionTitle {
+  font-size: 0.78rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.scanMapPopupEmpty {
+  margin: 0;
+}
+
+.scanMapPopupScanList {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scanMapPopupScanList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.scanMapPopupScanList li > span {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.scanMapPopupScanList small,
+.scanMapPopupScanList time {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.scanMapPopupScanList time {
+  flex: none;
+  white-space: nowrap;
+}
+
+.scanMapPopupShell .maplibregl-popup-content {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fffaf2;
+  box-shadow: 0 14px 36px rgba(24, 34, 40, 0.18);
+}
+
+.scanMapPopupShell.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: #fffaf2;
+}
+
+.scanMapPopupShell .maplibregl-popup-close-button {
+  z-index: 2;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 1.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanPinBadge {
+    animation: none;
+  }
+}
+
 .scannerPanel {
   display: grid;
   gap: 1rem;
@@ -925,5 +1336,11 @@ a {
   .scannerViewport {
     aspect-ratio: 3 / 4;
     min-height: min(68vh, 560px);
+  }
+
+  .scanMapFrame,
+  .scanMap {
+    min-height: 380px;
+    height: 380px;
   }
 }

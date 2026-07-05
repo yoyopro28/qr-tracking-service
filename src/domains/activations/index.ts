@@ -1,9 +1,12 @@
 import { ActivationSource, FlyerStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { validateLocationCoordinates } from "@/domains/locations";
 
 export type ActivationFormValues = {
   locationId: string;
   newLocationName: string;
+  newLocationLatitude: string;
+  newLocationLongitude: string;
   source: ActivationInputSource;
 };
 
@@ -27,6 +30,10 @@ function toActivationSource(source: ActivationInputSource) {
 export function validateActivationInput(values: ActivationFormValues) {
   const locationId = values.locationId.trim();
   const newLocationName = values.newLocationName.trim();
+  const coordinateValidation = validateLocationCoordinates({
+    latitude: values.newLocationLatitude,
+    longitude: values.newLocationLongitude,
+  });
   const source = normalizeActivationInputSource(values.source);
   const fieldErrors: ActivationFieldErrors = {};
 
@@ -39,12 +46,28 @@ export function validateActivationInput(values: ActivationFormValues) {
     fieldErrors.newLocationName = ["Choose either an existing location or a new location name."];
   }
 
+  if (locationId && (coordinateValidation.values.latitude || coordinateValidation.values.longitude)) {
+    const message = "Coordinates can only be entered when creating a new location.";
+    fieldErrors.newLocationLatitude = [message];
+    fieldErrors.newLocationLongitude = [message];
+  } else {
+    if (coordinateValidation.fieldErrors.latitude) {
+      fieldErrors.newLocationLatitude = coordinateValidation.fieldErrors.latitude;
+    }
+    if (coordinateValidation.fieldErrors.longitude) {
+      fieldErrors.newLocationLongitude = coordinateValidation.fieldErrors.longitude;
+    }
+  }
+
   return {
     values: {
       locationId,
       newLocationName,
+      newLocationLatitude: coordinateValidation.values.latitude,
+      newLocationLongitude: coordinateValidation.values.longitude,
       source,
     },
+    coordinates: coordinateValidation.coordinates,
     fieldErrors,
     isValid: Object.keys(fieldErrors).length === 0,
   };
@@ -100,6 +123,7 @@ export async function listWorkspaceLocationsForCampaign(workspaceId: string, cam
   return prisma.location.findMany({
     where: {
       workspaceId,
+      archivedAt: null,
       OR: [{ campaignId }, { campaignId: null }],
     },
     orderBy: [{ name: "asc" }],
@@ -109,6 +133,8 @@ export async function listWorkspaceLocationsForCampaign(workspaceId: string, cam
       campaignId: true,
       city: true,
       country: true,
+      latitude: true,
+      longitude: true,
       createdAt: true,
     },
   });
@@ -123,6 +149,7 @@ export async function getWorkspaceLocationForActivation(params: {
     where: {
       id: params.locationId,
       workspaceId: params.workspaceId,
+      archivedAt: null,
       OR: [{ campaignId: params.campaignId }, { campaignId: null }],
     },
     select: {
@@ -137,6 +164,8 @@ export async function activateFlyer(params: {
   campaignId: string;
   locationId?: string;
   newLocationName?: string;
+  newLocationLatitude?: number;
+  newLocationLongitude?: number;
   source?: ActivationInputSource;
 }) {
   return prisma.$transaction(async (tx) => {
@@ -168,6 +197,8 @@ export async function activateFlyer(params: {
           workspaceId: params.workspaceId,
           campaignId: params.campaignId,
           name: params.newLocationName,
+          latitude: params.newLocationLatitude,
+          longitude: params.newLocationLongitude,
         },
         select: {
           id: true,

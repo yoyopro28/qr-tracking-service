@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { AppShell } from "@/components/layout/app-shell";
+import { ScanLocationMap } from "@/components/analytics/scan-location-map";
 import { getWorkspaceAnalytics } from "@/domains/analytics";
 import { resolveDemoWorkspace } from "@/domains/workspaces";
 
@@ -49,6 +50,32 @@ export default async function AnalyticsPage() {
             <span className="metricLabel">Activated flyers</span>
             <strong>{analytics.summary.totalActivatedFlyers}</strong>
           </article>
+        </div>
+      </section>
+
+      <section className="panel mapPanel">
+        <div className="sectionHeader">
+          <div>
+            <h2>Scan map</h2>
+            <p className="sectionCopy">
+              Pin numbers show total attributed scans. Emoji badges compare recent performance.
+            </p>
+          </div>
+          <Link className="textLink" href="/admin/locations">
+            Manage locations
+          </Link>
+        </div>
+
+        <ScanLocationMap locations={analytics.mapLocations} />
+
+        <div className="mapLegend">
+          <span>🏆 Best in the last 7 days</span>
+          <span>🔥 Strong performance</span>
+          <span>⚡ Active today</span>
+          <span>✨ Active this week</span>
+          {analytics.unmappedLocationCount > 0 ? (
+            <span>{analytics.unmappedLocationCount} locations are missing coordinates</span>
+          ) : null}
         </div>
       </section>
 
@@ -144,7 +171,10 @@ export default async function AnalyticsPage() {
                 <article key={location.locationId ?? location.name} className="campaignCard">
                   <div className="cardTopline">
                     <span className="statusBadge">{location.scanCount} scans</span>
-                    <span className="metaText">{location.campaignName ?? "Shared location"}</span>
+                    <span className="metaText">
+                      {location.archived ? "Archived · " : ""}
+                      {location.campaignName ?? "Shared location"}
+                    </span>
                   </div>
                   <h3>{location.name}</h3>
                 </article>

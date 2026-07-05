@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { ActivationActionState } from "@/app/admin/activation/actions";
+import { LocationCoordinateFields } from "@/components/locations/location-coordinate-fields";
 
 type FlyerActivationFormProps = {
   action: (
@@ -16,6 +17,8 @@ type FlyerActivationFormProps = {
     campaignId: string | null;
     city: string | null;
     country: string | null;
+    latitude: number | null;
+    longitude: number | null;
   }>;
   disabled?: boolean;
 };
@@ -46,7 +49,11 @@ function locationLabel(location: FlyerActivationFormProps["locations"][number]) 
   const suffix = [location.city, location.country].filter(Boolean).join(", ");
   const scope = location.campaignId ? "campaign" : "shared";
 
-  return suffix ? `${location.name} (${suffix}) [${scope}]` : `${location.name} [${scope}]`;
+  const mapping = location.latitude !== null && location.longitude !== null ? ", mapped" : "";
+
+  return suffix
+    ? `${location.name} (${suffix}) [${scope}${mapping}]`
+    : `${location.name} [${scope}${mapping}]`;
 }
 
 export function FlyerActivationForm({
@@ -56,6 +63,7 @@ export function FlyerActivationForm({
   disabled = false,
 }: FlyerActivationFormProps) {
   const [state, formAction] = useActionState(action, initialState);
+  const [selectedLocationId, setSelectedLocationId] = useState(state.values.locationId);
 
   return (
     <section className="panel">
@@ -77,7 +85,8 @@ export function FlyerActivationForm({
           <select
             className="input"
             name="locationId"
-            defaultValue={state.values.locationId}
+            value={selectedLocationId}
+            onChange={(event) => setSelectedLocationId(event.target.value)}
             disabled={disabled}
             aria-invalid={Boolean(state.fieldErrors?.locationId)}
             aria-describedby={
@@ -115,6 +124,24 @@ export function FlyerActivationForm({
             errors={state.fieldErrors?.newLocationName}
           />
         </label>
+
+        <div className="field">
+          <span className="fieldLabel">Map position for the new location (optional)</span>
+          <LocationCoordinateFields
+            latitudeName="newLocationLatitude"
+            longitudeName="newLocationLongitude"
+            defaultLatitude={state.values.newLocationLatitude}
+            defaultLongitude={state.values.newLocationLongitude}
+            latitudeErrors={state.fieldErrors?.newLocationLatitude}
+            longitudeErrors={state.fieldErrors?.newLocationLongitude}
+            disabled={disabled || Boolean(selectedLocationId)}
+          />
+          {selectedLocationId ? (
+            <p className="fieldHint">
+              Existing location coordinates can be changed on the Locations page.
+            </p>
+          ) : null}
+        </div>
 
         {state.formError ? <p className="formError">{state.formError}</p> : null}
 

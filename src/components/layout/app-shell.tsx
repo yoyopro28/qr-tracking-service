@@ -24,6 +24,9 @@ export function AppShell({ children }: AppShellProps) {
           <Link href="/admin/activation" className="shellNavLink">
             Activation
           </Link>
+          <Link href="/admin/locations" className="shellNavLink">
+            Locations
+          </Link>
           <Link href="/analytics" className="shellNavLink">
             Analytics
           </Link>
