@@ -1,8 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { analyticsDatasetExists, queryAnalytics, type AnalyticsEngineConfig, type AnalyticsRow } from "../_shared/analytics-engine.ts";
 import { corsHeaders, json, requireBearer, supabasePublishableKey } from "../_shared/http.ts";
 
 type Input = { workspaceId: string; from: string; to: string };
-type AnalyticsRow = Record<string, string | number | null>;
 type Summary = {
   totalScans: number;
   uniqueIpDays: number;
@@ -15,17 +15,6 @@ function iso(value: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) throw new Error("Invalid date range");
   return date.toISOString().replace("T", " ").replace("Z", "");
-}
-
-async function queryAnalytics(sql: string): Promise<AnalyticsRow[]> {
-  const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")!;
-  const token = Deno.env.get("CLOUDFLARE_ANALYTICS_READ_TOKEN")!;
-  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`, {
-    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/plain" }, body: sql,
-  });
-  if (!response.ok) throw new Error(`Analytics Engine query failed (${response.status})`);
-  const payload = await response.json() as { data?: AnalyticsRow[] } | AnalyticsRow[];
-  return Array.isArray(payload) ? payload : payload.data ?? [];
 }
 
 function analyticsDataset() {
@@ -88,21 +77,27 @@ Deno.serve(async (request) => {
     let live = emptySummary();
     if (toMs > Math.max(fromMs, liveCutoffMs)) {
       const dataset = analyticsDataset();
-      const liveFrom = iso(new Date(Math.max(fromMs, liveCutoffMs)).toISOString());
-      const liveTo = iso(toDate.toISOString());
-      const where = `blob1 = '${input.workspaceId}' AND timestamp >= toDateTime('${liveFrom}') AND timestamp < toDateTime('${liveTo}')`;
-      const [totals, series, campaigns, locations] = await Promise.all([
-        queryAnalytics(`SELECT sum(_sample_interval * double1) AS scans, uniq(blob8) AS unique_ip_days FROM ${dataset} WHERE ${where}`),
-        queryAnalytics(`SELECT toString(toDate(timestamp)) AS date, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY date ORDER BY date`),
-        queryAnalytics(`SELECT blob2 AS campaign_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY campaign_id ORDER BY scans DESC LIMIT 100`),
-        queryAnalytics(`SELECT nullIf(blob4, '') AS location_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY location_id ORDER BY scans DESC LIMIT 100`),
-      ]);
-      live = {
-        totalScans: Number(totals[0]?.scans ?? 0), uniqueIpDays: Number(totals[0]?.unique_ip_days ?? 0),
-        series: series.map((row) => ({ date: String(row.date), scans: Number(row.scans) })),
-        campaigns: campaigns.map((row) => ({ campaignId: String(row.campaign_id), scans: Number(row.scans) })),
-        locations: locations.map((row) => ({ locationId: row.location_id ? String(row.location_id) : null, scans: Number(row.scans) })),
+      const analyticsConfig: AnalyticsEngineConfig = {
+        accountId: Deno.env.get("CLOUDFLARE_ACCOUNT_ID")!,
+        token: Deno.env.get("CLOUDFLARE_ANALYTICS_READ_TOKEN")!,
       };
+      if (await analyticsDatasetExists(analyticsConfig, dataset)) {
+        const liveFrom = iso(new Date(Math.max(fromMs, liveCutoffMs)).toISOString());
+        const liveTo = iso(toDate.toISOString());
+        const where = `blob1 = '${input.workspaceId}' AND timestamp >= toDateTime('${liveFrom}') AND timestamp < toDateTime('${liveTo}')`;
+        const [totals, series, campaigns, locations] = await Promise.all([
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE ${where}`),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT formatDateTime(timestamp, '%Y-%m-%d', 'Etc/UTC') AS date, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY date ORDER BY date`),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT blob2 AS campaign_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY campaign_id ORDER BY scans DESC LIMIT 100`),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT blob4 AS location_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY location_id ORDER BY scans DESC LIMIT 100`),
+        ]);
+        live = {
+          totalScans: Number(totals[0]?.scans ?? 0), uniqueIpDays: Number(totals[0]?.unique_ip_days ?? 0),
+          series: series.map((row) => ({ date: String(row.date), scans: Number(row.scans) })),
+          campaigns: campaigns.map((row) => ({ campaignId: String(row.campaign_id), scans: Number(row.scans) })),
+          locations: locations.map((row) => ({ locationId: row.location_id ? String(row.location_id) : null, scans: Number(row.scans) })),
+        };
+      }
     }
     return json(request, mergeSummaries(rollups, live));
   } catch (error) {
