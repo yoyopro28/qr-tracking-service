@@ -134,11 +134,26 @@ Im Auth-URL-Dialog des jeweiligen Projekts setzen:
 
 - Site URL: die Admin-Origin der Umgebung
 - Redirect URLs: Admin-Origin und bei Bedarf konkrete Preview-Origin
-- E-Mail-OTP beziehungsweise Magic Link aktivieren
-- eigenen SMTP-Provider für Produktion konfigurieren
+- Google als OAuth-Provider aktivieren
 
-Ohne produktiven SMTP-Provider ist der Login nicht belastbar. Vor dem öffentlichen
-Start außerdem Rate Limits, Absenderdomain, DKIM/SPF/DMARC und Mail-Templates testen.
+In Google Auth Platform einen OAuth-Client vom Typ **Web application** anlegen.
+Als autorisierte JavaScript-Origin die Admin-Origin und als Redirect-URI exakt
+Folgendes eintragen:
+
+```text
+https://<project-ref>.supabase.co/auth/v1/callback
+```
+
+Die von Google ausgegebene Client-ID und das Client-Secret anschließend unter
+Supabase **Authentication → Sign In / Providers → Google** hinterlegen. Benötigt
+werden nur die Scopes `openid`, `userinfo.email` und `userinfo.profile`.
+
+E-Mail-OTP bleibt technisch als interner Rückfallpfad vorhanden, wird im
+Produktions-UI aber nicht angeboten. Wenn es später wieder sichtbar werden soll,
+muss zuvor ein eigener SMTP-Provider konfiguriert werden.
+
+Vor dem öffentlichen Start den OAuth-Consent-Screen, die erlaubten Domains und
+den Login mit einem Konto außerhalb des Projektteams testen.
 
 ## 6. Erster automatischer Rollout
 
@@ -160,7 +175,7 @@ stehen oder ein erforderlicher GitHub-Wert fehlt.
 
 ## 7. Abnahme nach dem ersten Rollout
 
-- OTP-Login mit einer echten Empfängeradresse durchführen.
+- Google-Login mit einer echten Benutzeradresse durchführen.
 - Prüfen, dass automatisch genau ein eigener Workspace entsteht.
 - Kampagne und PDF-Vorlage anlegen, QR-Position visuell prüfen.
 - Einen kleinen Batch erzeugen; Download erst nach Status `SYNCED` prüfen.
