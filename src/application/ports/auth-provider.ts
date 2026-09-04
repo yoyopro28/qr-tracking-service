@@ -10,6 +10,7 @@ export type Unsubscribe = () => void;
 export interface AuthProvider {
   getSession(): Promise<AuthSession | null>;
   signInWithOtp(email: string): Promise<void>;
+  signInWithGoogle(): Promise<void>;
   signOut(): Promise<void>;
   onSessionChanged(listener: SessionListener): Unsubscribe;
 }
