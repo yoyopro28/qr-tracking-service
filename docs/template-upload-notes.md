@@ -1,5 +1,8 @@
 # Template Upload Notes
 
+> Historical note for the former Next.js/Prisma MVP. Do not use this as an
+> operational guide for the current Cloudflare/Supabase application.
+
 ## Current MVP assumptions
 
 - Template upload is scoped to the same temporary demo workspace used by campaign CRUD.

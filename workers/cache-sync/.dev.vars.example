@@ -1,0 +1,2 @@
+SUPABASE_SECRET_KEY="replace-with-local-secret-key-from-supabase-status"
+SYNC_WEBHOOK_SECRET="replace-with-at-least-32-random-characters"

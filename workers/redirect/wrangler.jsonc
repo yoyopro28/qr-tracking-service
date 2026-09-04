@@ -1,0 +1,29 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "qr-redirect",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "secrets": { "required": ["HMAC_SECRET"] },
+  "kv_namespaces": [
+    { "binding": "REDIRECTS", "id": "00000000000000000000000000000000" }
+  ],
+  "analytics_engine_datasets": [
+    { "binding": "SCANS", "dataset": "qr_scans" }
+  ],
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "env": {
+    "preview": {
+      "name": "qr-redirect-preview",
+      "secrets": { "required": ["HMAC_SECRET"] },
+      "kv_namespaces": [{ "binding": "REDIRECTS", "id": "55f195afad7e4d038bb55439d29f3772" }],
+      "analytics_engine_datasets": [{ "binding": "SCANS", "dataset": "qr_scans_preview" }]
+    },
+    "production": {
+      "name": "qr-redirect-production",
+      "secrets": { "required": ["HMAC_SECRET"] },
+      "kv_namespaces": [{ "binding": "REDIRECTS", "id": "85f3b5e9c67d44da9a471f3710e864f2" }],
+      "analytics_engine_datasets": [{ "binding": "SCANS", "dataset": "qr_scans" }]
+    }
+  }
+}

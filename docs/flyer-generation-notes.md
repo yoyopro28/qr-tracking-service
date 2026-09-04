@@ -1,5 +1,8 @@
 # Flyer Generation Notes
 
+> Historical note for the former Next.js/Prisma MVP. Do not use this as an
+> operational guide for the current Cloudflare/Supabase application.
+
 ## Current MVP assumptions
 
 - Flyer generation currently creates database records only.
