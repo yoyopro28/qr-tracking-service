@@ -1,0 +1,28 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "qr-cache-sync",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "secrets": { "required": ["SUPABASE_SECRET_KEY", "SYNC_WEBHOOK_SECRET"] },
+  "vars": { "SUPABASE_URL": "http://127.0.0.1:54321" },
+  "kv_namespaces": [
+    { "binding": "REDIRECTS", "id": "00000000000000000000000000000000" }
+  ],
+  "triggers": { "crons": ["* * * * *", "0 3 * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "env": {
+    "preview": {
+      "name": "qr-cache-sync-preview",
+      "secrets": { "required": ["SUPABASE_SECRET_KEY", "SYNC_WEBHOOK_SECRET"] },
+      "vars": { "SUPABASE_URL": "https://yeohcglutyegbvafxisl.supabase.co" },
+      "kv_namespaces": [{ "binding": "REDIRECTS", "id": "55f195afad7e4d038bb55439d29f3772" }]
+    },
+    "production": {
+      "name": "qr-cache-sync-production",
+      "secrets": { "required": ["SUPABASE_SECRET_KEY", "SYNC_WEBHOOK_SECRET"] },
+      "vars": { "SUPABASE_URL": "https://adrcdewvydtslqkokohy.supabase.co" },
+      "kv_namespaces": [{ "binding": "REDIRECTS", "id": "85f3b5e9c67d44da9a471f3710e864f2" }]
+    }
+  }
+}
