@@ -145,6 +145,7 @@ th { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transfo
 .scanner-panel { display: grid; gap: 1rem; }
 .scanner-viewport { position: relative; aspect-ratio: 4/3; min-height: 280px; overflow: hidden; border-radius: 16px; background: #111d17; }
 .scanner-video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-file-button { width: fit-content; }
 .scanner-overlay { position: absolute; inset: 0; display: grid; place-content: center; padding: 2rem; background: rgb(11 33 24 / 72%); color: white; text-align: center; }
 .scanner-reticle { position: absolute; inset: 20%; border: 2px solid rgb(255 255 255 / 86%); border-radius: 20px; box-shadow: 0 0 0 999px rgb(0 0 0 / 14%); pointer-events: none; }
 .lookup-result { display: grid; gap: 1rem; margin-top: 1.25rem; padding: 1rem; border: 1px solid var(--line); border-radius: 16px; background: #f7f4ec; }

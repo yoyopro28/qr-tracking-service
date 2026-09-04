@@ -34,6 +34,14 @@ describe("Analytics Engine client", () => {
   it("keeps actual Analytics Engine failures visible", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("invalid query", { status: 422 })));
 
-    await expect(queryAnalytics(config, "SELECT invalid()")).rejects.toThrow("Analytics Engine query failed (422)");
+    await expect(queryAnalytics(config, "SELECT invalid()", "broken-query"))
+      .rejects.toThrow('Analytics Engine query "broken-query" failed (422): invalid query');
+  });
+
+  it("bounds and flattens error details before logging them", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(`first\n${"x".repeat(2_000)}`, { status: 422 })));
+
+    await expect(queryAnalytics(config, "SELECT invalid()", "broken-query"))
+      .rejects.toMatchObject({ status: 422, queryName: "broken-query", responseDetail: expect.stringMatching(/^first x{900}/) });
   });
 });
