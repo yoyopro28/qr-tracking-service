@@ -86,10 +86,10 @@ Deno.serve(async (request) => {
         const liveTo = iso(toDate.toISOString());
         const where = `blob1 = '${input.workspaceId}' AND timestamp >= toDateTime('${liveFrom}') AND timestamp < toDateTime('${liveTo}')`;
         const [totals, series, campaigns, locations] = await Promise.all([
-          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE ${where}`),
-          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT formatDateTime(timestamp, '%Y-%m-%d', 'Etc/UTC') AS date, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY date ORDER BY date`),
-          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT blob2 AS campaign_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY campaign_id ORDER BY scans DESC LIMIT 100`),
-          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT blob4 AS location_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY location_id ORDER BY scans DESC LIMIT 100`),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE ${where}`, "totals"),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT formatDateTime(timestamp, '%Y-%m-%d', 'Etc/UTC') AS date, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY date ORDER BY date`, "daily-series"),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT blob2 AS campaign_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY campaign_id ORDER BY scans DESC LIMIT 100`, "campaigns"),
+          queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT blob4 AS location_id, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY location_id ORDER BY scans DESC LIMIT 100`, "locations"),
         ]);
         live = {
           totalScans: Number(totals[0]?.scans ?? 0), uniqueIpDays: Number(totals[0]?.unique_ip_days ?? 0),

@@ -21,8 +21,8 @@ Deno.serve(async (request) => {
     const sql = `SELECT '${day}' AS day, blob1 AS workspace_id, blob2 AS campaign_id, blob3 AS flyer_id, blob4 AS location_id, blob5 AS country_code, sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE timestamp >= toDateTime('${day} 00:00:00') AND timestamp < toDateTime('${nextDay} 00:00:00') GROUP BY workspace_id, campaign_id, flyer_id, location_id, country_code`;
     const workspaceSql = `SELECT '${day}' AS day, blob1 AS workspace_id, sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE timestamp >= toDateTime('${day} 00:00:00') AND timestamp < toDateTime('${nextDay} 00:00:00') GROUP BY workspace_id`;
     const [rows, workspaceRows] = await Promise.all([
-      queryAnalytics<Rollup>(analyticsConfig, sql),
-      queryAnalytics<WorkspaceRollup>(analyticsConfig, workspaceSql),
+      queryAnalytics<Rollup>(analyticsConfig, sql, "daily-rollup"),
+      queryAnalytics<WorkspaceRollup>(analyticsConfig, workspaceSql, "workspace-rollup"),
     ]);
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, supabaseSecretKey(), { auth: { persistSession: false } });
     if (rows.length) {

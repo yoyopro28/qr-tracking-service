@@ -1,5 +1,6 @@
 import { BrowserCodeReader, BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import { useEffect, useRef, useState } from "react";
+import { cameraErrorMessage, parseTrackingCode } from "../scanner";
 
 export function QrScanner({ trackingOrigin, onCode }: { trackingOrigin: string; onCode: (shortcode: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -11,53 +12,82 @@ export function QrScanner({ trackingOrigin, onCode }: { trackingOrigin: string; 
 
   useEffect(() => () => controlsRef.current?.stop(), []);
 
-  function parse(value: string) {
-    const direct = value.trim().toUpperCase();
-    if (/^[A-Z0-9]{8}$/.test(direct)) return direct;
-    try {
-      const url = new URL(value);
-      if (url.origin !== trackingOrigin) return null;
-      const match = url.pathname.match(/^\/r\/([A-Za-z0-9]{8})\/?$/);
-      return match?.[1].toUpperCase() ?? null;
-    } catch { return null; }
+  function accept(value: string) {
+    const code = parseTrackingCode(value, trackingOrigin);
+    if (!code) {
+      setError("Der QR-Code gehört nicht zu dieser Tracking-Domain.");
+      return false;
+    }
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    setRunning(false);
+    onCode(code);
+    return true;
   }
 
-  async function start() {
+  async function refreshDevices() {
+    try {
+      const available = await BrowserCodeReader.listVideoInputDevices();
+      setDevices(available);
+      setDeviceId((current) => current ?? available.find((item) => /back|rear|environment/i.test(item.label))?.deviceId ?? available[0]?.deviceId);
+      return available;
+    } catch {
+      setDevices([]);
+      return [];
+    }
+  }
+
+  async function start(requestedDeviceId?: string) {
     setError("");
     try {
       controlsRef.current?.stop();
-      const available = await BrowserCodeReader.listVideoInputDevices();
-      setDevices(available);
-      const selected = deviceId ?? available.find((item) => /back|rear|environment/i.test(item.label))?.deviceId ?? available[0]?.deviceId;
-      if (!selected || !videoRef.current) throw new Error("Keine Kamera verfügbar.");
-      setDeviceId(selected);
+      controlsRef.current = null;
+      if (!navigator.mediaDevices?.getUserMedia) throw new DOMException("Camera API unavailable", "NotSupportedError");
+      if (!videoRef.current) throw new Error("Die Kameravorschau ist nicht verfügbar.");
       const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 250 });
-      controlsRef.current = await reader.decodeFromVideoDevice(selected, videoRef.current, (result) => {
+      const constraints: MediaStreamConstraints = {
+        audio: false,
+        video: requestedDeviceId
+          ? { deviceId: { exact: requestedDeviceId } }
+          : { facingMode: { ideal: "environment" } },
+      };
+      controlsRef.current = await reader.decodeFromConstraints(constraints, videoRef.current, (result) => {
         if (!result) return;
-        const code = parse(result.getText());
-        if (!code) { setError("Der QR-Code gehört nicht zu dieser Tracking-Domain."); return; }
-        controlsRef.current?.stop();
-        setRunning(false);
-        onCode(code);
+        accept(result.getText());
       });
       setRunning(true);
+      void refreshDevices();
     } catch (cause) {
       setRunning(false);
-      setError(cause instanceof Error ? cause.message : "Kamera konnte nicht gestartet werden.");
+      setError(cameraErrorMessage(cause));
     }
   }
 
   function stop() { controlsRef.current?.stop(); controlsRef.current = null; setRunning(false); }
 
+  async function scanImage(file?: File) {
+    if (!file) return;
+    setError("");
+    const url = URL.createObjectURL(file);
+    try {
+      const result = await new BrowserQRCodeReader().decodeFromImageUrl(url);
+      accept(result.getText());
+    } catch {
+      setError("Auf dem ausgewählten Bild wurde kein lesbarer QR-Code gefunden.");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   return (
     <section className="scanner-panel">
       <div className="scanner-viewport">
-        <video ref={videoRef} className="scanner-video" muted playsInline />
+        <video ref={videoRef} className="scanner-video" muted playsInline autoPlay />
         {!running && <div className="scanner-overlay">Kamera starten und den gedruckten QR-Code in den Rahmen halten.</div>}
         <div className="scanner-reticle" aria-hidden="true" />
       </div>
-      {devices.length > 1 && <label>Kamera<select value={deviceId} onChange={(event) => { setDeviceId(event.target.value); if (running) void start(); }}>{devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Kamera ${index + 1}`}</option>)}</select></label>}
-      <div className="actions"><button type="button" className="button" onClick={() => void (running ? Promise.resolve(stop()) : start())}>{running ? "Kamera stoppen" : "Kamera starten"}</button></div>
+      {devices.length > 1 && <label>Kamera<select value={deviceId} onChange={(event) => { const selected = event.target.value; setDeviceId(selected); if (running) void start(selected); }}>{devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Kamera ${index + 1}`}</option>)}</select></label>}
+      <div className="actions"><button type="button" className="button" onClick={() => void (running ? Promise.resolve(stop()) : start(deviceId))}>{running ? "Kamera stoppen" : "Kamera starten"}</button><label className="button secondary scanner-file-button">QR-Foto auswählen<input className="sr-only" type="file" accept="image/*" capture="environment" onChange={(event) => { void scanImage(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
       {error && <p className="field-error" role="alert">{error}</p>}
     </section>
   );
