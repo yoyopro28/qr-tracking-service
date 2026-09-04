@@ -92,6 +92,7 @@ jobs:
       - run: npx wrangler deploy --env preview
       - run: npm run deploy:smoke
     env:
+      DEPLOY_ENV: preview
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -149,6 +150,7 @@ jobs:
       - run: npx wrangler deploy --env production
       - run: npm run deploy:smoke
     env:
+      DEPLOY_ENV: production
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}

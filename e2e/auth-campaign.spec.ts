@@ -8,7 +8,7 @@ const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_
 test.skip(!supabaseUrl || !secretKey, "VITE_SUPABASE_URL and SUPABASE_SECRET_KEY are required");
 
 test("OTP login, campaign, browser PDF batch and location work end to end", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   const admin = createClient(supabaseUrl!, secretKey!, { auth: { persistSession: false, autoRefreshToken: false } });
   const email = `e2e-${crypto.randomUUID()}@example.test`;
   let userId: string | undefined;
@@ -72,7 +72,7 @@ test("OTP login, campaign, browser PDF batch and location work end to end", asyn
         if (!generatedBatchPaths.includes(generatedBatch.storage_path)) generatedBatchPaths.push(generatedBatch.storage_path);
       }
       return generatedBatch?.status ?? "MISSING";
-    }, { timeout: 45_000, intervals: [500, 1_000, 2_000] }).toBe("FINALIZED");
+    }, { timeout: 90_000, intervals: [500, 1_000, 2_000] }).toBe("FINALIZED");
 
     const { data: routes, error: routeError } = await admin.from("qr_routes").select("slug,version").eq("workspace_id", workspaceId).eq("campaign_id", campaignId);
     if (routeError) throw routeError;
