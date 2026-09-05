@@ -120,7 +120,7 @@ Je Environment folgende **Variables** setzen:
 | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` |
 | `VITE_TRACKING_ORIGIN` | `https://qr.example.de` |
-| `VITE_MAP_STYLE_URL` | optionaler MapLibre-Style, sonst leer |
+| `VITE_MAP_STYLE_URL` | optionaler MapLibre-Style; Standard ist OpenFreeMap Liberty |
 | `CLOUDFLARE_ANALYTICS_DATASET` | Preview: `qr_scans_preview`, Produktion: `qr_scans` |
 | `ADMIN_URL` | `https://admin.example.de` |
 | `ALLOWED_ORIGINS` | `https://admin.example.de` (mehrere kommasepariert) |

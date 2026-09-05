@@ -16,7 +16,7 @@ export const browserConfig = {
   supabaseUrl: origin("VITE_SUPABASE_URL"),
   supabasePublishableKey: requiredBrowserEnv("VITE_SUPABASE_PUBLISHABLE_KEY"),
   trackingOrigin: origin("VITE_TRACKING_ORIGIN"),
-  mapStyleUrl: import.meta.env.VITE_MAP_STYLE_URL?.trim() || null,
+  mapStyleUrl: import.meta.env.VITE_MAP_STYLE_URL?.trim() || "https://tiles.openfreemap.org/styles/liberty",
   storage: {
     templatesBucket: "templates",
     generatedFlyersBucket: "generated-flyers",
