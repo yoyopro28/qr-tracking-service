@@ -4,9 +4,10 @@ const required = (name) => {
   return value.replace(/\/$/, "");
 };
 
-const scope = process.env.DEPLOY_SCOPE?.trim() || "all";
-if (!new Set(["all", "admin", "backend"]).has(scope)) throw new Error("DEPLOY_SCOPE must be all, admin or backend");
-const result = { scope };
+const requestedScope = process.env.DEPLOY_SCOPE?.trim() || "all";
+if (!new Set(["all", "admin", "backend", "bootstrap"]).has(requestedScope)) throw new Error("DEPLOY_SCOPE must be all, admin, backend or bootstrap");
+const scope = requestedScope === "bootstrap" ? "all" : requestedScope;
+const result = { scope: requestedScope };
 
 if (scope === "all" || scope === "admin") {
   const admin = await fetch(required("ADMIN_URL"), { redirect: "manual" });

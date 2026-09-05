@@ -116,7 +116,7 @@ test("OTP login, campaign, browser PDF batch and location work end to end", asyn
     await page.getByLabel("Name").fill("E2E Distribution Point");
     await page.getByLabel("Adresse").fill("Teststraße 1");
     await page.getByLabel("PLZ").fill("10115");
-    await page.getByLabel("Ort").fill("Berlin");
+    await page.getByLabel("Ort", { exact: true }).fill("Berlin");
     await page.getByLabel("Land").fill("Deutschland");
     await page.getByRole("button", { name: "Standort anlegen" }).click();
     await expect(page.getByText("Standort wurde angelegt.")).toBeVisible();

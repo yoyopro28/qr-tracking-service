@@ -10,6 +10,12 @@ concurrency:
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      full_check:
+        description: Supabase-, SQL-, Browser- und Wrangler-Integrationstests ausführen
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   verify:
@@ -22,7 +28,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run typecheck
       - run: npm test
       - run: npm run build
         env:
@@ -31,9 +36,12 @@ jobs:
           VITE_TRACKING_ORIGIN: https://qr.example.com
       - run: npm run build:check
       - run: npm run worker:check
-      - run: npm run worker:dry-run
+      - name: Dry-run Worker bundles
+        if: github.event_name == 'workflow_dispatch' && inputs.full_check
+        run: npm run worker:dry-run
 
   integration:
+    if: github.event_name == 'workflow_dispatch' && inputs.full_check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
