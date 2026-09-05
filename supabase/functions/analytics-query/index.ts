@@ -62,6 +62,9 @@ Deno.serve(async (request) => {
     if (userError || !userData.user) return json(request, { error: "Unauthorized" }, 401);
     const { data: membership, error } = await user.from("workspace_members").select("workspace_id").eq("workspace_id", input.workspaceId).maybeSingle();
     if (error || !membership) return json(request, { error: "Forbidden" }, 403);
+    const { data: campaigns, error: campaignsError } = await user.from("campaigns").select("id").eq("workspace_id", input.workspaceId);
+    if (campaignsError) throw campaignsError;
+    const campaignIds = (campaigns ?? []).map((campaign) => campaign.id);
     const todayMs = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
     const liveCutoffMs = todayMs - 86400000;
     if (fromMs < liveCutoffMs && fromDate.toISOString().slice(11) !== "00:00:00.000Z") return json(request, { error: "Historical date ranges must begin at UTC midnight" }, 400);
@@ -86,7 +89,10 @@ Deno.serve(async (request) => {
       if (await analyticsDatasetExists(analyticsConfig, dataset)) {
         const liveFrom = iso(new Date(Math.max(fromMs, liveCutoffMs)).toISOString());
         const liveTo = iso(toDate.toISOString());
-        const where = `blob1 = '${input.workspaceId}' AND timestamp >= toDateTime('${liveFrom}') AND timestamp < toDateTime('${liveTo}')`;
+        // Analytics Engine rows are immutable. Exclude campaigns deleted from
+        // PostgreSQL so their retained raw events do not remain visible.
+        const campaignFilter = campaignIds.length === 0 ? "1 = 0" : `blob2 IN (${campaignIds.map((id) => `'${id}'`).join(",")})`;
+        const where = `blob1 = '${input.workspaceId}' AND ${campaignFilter} AND timestamp >= toDateTime('${liveFrom}') AND timestamp < toDateTime('${liveTo}')`;
         const [totals, series, campaigns, locations] = await Promise.all([
           queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE ${where}`, "totals"),
           queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT formatDateTime(timestamp, '%Y-%m-%d', 'Etc/UTC') AS date, sum(_sample_interval * double1) AS scans FROM ${dataset} WHERE ${where} GROUP BY date ORDER BY date`, "daily-series"),
