@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { analyticsDatasetExists, analyticsDateTimeLiteral, queryAnalytics, type AnalyticsEngineConfig, type AnalyticsRow } from "../_shared/analytics-engine.ts";
 import { corsHeaders, json, requireBearer, supabasePublishableKey } from "../_shared/http.ts";
 
-type Input = { workspaceId: string; from: string; to: string };
+type Input = { workspaceId: string; from: string; to: string; campaignId?: string };
 type Summary = {
   totalScans: number;
   uniqueIpDays: number;
@@ -54,6 +54,7 @@ Deno.serve(async (request) => {
   try {
     const input = await request.json() as Input;
     if (!/^[0-9a-f-]{36}$/i.test(input.workspaceId)) return json(request, { error: "Invalid workspace" }, 400);
+    if (input.campaignId && !/^[0-9a-f-]{36}$/i.test(input.campaignId)) return json(request, { error: "Invalid campaign" }, 400);
     const fromDate = new Date(input.from); const toDate = new Date(input.to);
     const fromMs = fromDate.getTime(); const toMs = toDate.getTime();
     if (toMs <= fromMs || toMs - fromMs > 3660 * 86400000 || toMs > Date.now() + 300000) return json(request, { error: "Invalid date range" }, 400);
@@ -65,15 +66,17 @@ Deno.serve(async (request) => {
     const { data: campaigns, error: campaignsError } = await user.from("campaigns").select("id").eq("workspace_id", input.workspaceId);
     if (campaignsError) throw campaignsError;
     const campaignIds = (campaigns ?? []).map((campaign) => campaign.id);
+    if (input.campaignId && !campaignIds.includes(input.campaignId)) return json(request, { error: "Campaign not found" }, 404);
     const todayMs = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
     const liveCutoffMs = todayMs - 86400000;
     if (fromMs < liveCutoffMs && fromDate.toISOString().slice(11) !== "00:00:00.000Z") return json(request, { error: "Historical date ranges must begin at UTC midnight" }, 400);
     let rollups = emptySummary();
     if (fromMs < Math.min(toMs, liveCutoffMs)) {
-      const { data, error: rollupError } = await user.rpc("get_scan_rollup_summary", {
+      const { data, error: rollupError } = await user.rpc(input.campaignId ? "get_campaign_scan_rollup_summary" : "get_scan_rollup_summary", {
         p_workspace_id: input.workspaceId,
         p_from: fromDate.toISOString().slice(0, 10),
         p_to: new Date(Math.min(toMs, liveCutoffMs)).toISOString().slice(0, 10),
+        ...(input.campaignId ? { p_campaign_id: input.campaignId } : {}),
       });
       if (rollupError) throw rollupError;
       rollups = data as unknown as Summary;
@@ -91,7 +94,8 @@ Deno.serve(async (request) => {
         const liveTo = iso(toDate.toISOString());
         // Analytics Engine rows are immutable. Exclude campaigns deleted from
         // PostgreSQL so their retained raw events do not remain visible.
-        const campaignFilter = campaignIds.length === 0 ? "1 = 0" : `blob2 IN (${campaignIds.map((id) => `'${id}'`).join(",")})`;
+        const visibleCampaignIds = input.campaignId ? [input.campaignId] : campaignIds;
+        const campaignFilter = visibleCampaignIds.length === 0 ? "1 = 0" : `blob2 IN (${visibleCampaignIds.map((id) => `'${id}'`).join(",")})`;
         const where = `blob1 = '${input.workspaceId}' AND ${campaignFilter} AND timestamp >= toDateTime('${liveFrom}') AND timestamp < toDateTime('${liveTo}')`;
         const [totals, series, campaigns, locations] = await Promise.all([
           queryAnalytics<AnalyticsRow>(analyticsConfig, `SELECT sum(_sample_interval * double1) AS scans, count(DISTINCT blob8) AS unique_ip_days FROM ${dataset} WHERE ${where}`, "totals"),

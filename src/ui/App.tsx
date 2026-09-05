@@ -10,6 +10,7 @@ import { authProvider, errorMessage, qrRepository } from "./services";
 const ActivationPage = lazy(() => import("./pages/ActivationPage").then((module) => ({ default: module.ActivationPage })));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
 const CampaignDetailPage = lazy(() => import("./pages/CampaignDetailPage").then((module) => ({ default: module.CampaignDetailPage })));
+const CampaignAnalyticsPage = lazy(() => import("./pages/CampaignAnalyticsPage").then((module) => ({ default: module.CampaignAnalyticsPage })));
 const CampaignsPage = lazy(() => import("./pages/CampaignsPage").then((module) => ({ default: module.CampaignsPage })));
 const GeneratePage = lazy(() => import("./pages/GeneratePage").then((module) => ({ default: module.GeneratePage })));
 const LocationsPage = lazy(() => import("./pages/LocationsPage").then((module) => ({ default: module.LocationsPage })));
@@ -49,6 +50,7 @@ export function App() {
         {workspaceId ? <Suspense fallback={<LoadingState label="Modul wird geladen…" />}><Routes>
           <Route path="/campaigns" element={<CampaignsPage workspaceId={workspaceId} />} />
           <Route path="/campaigns/:campaignId" element={<CampaignDetailPage workspaceId={workspaceId} />} />
+          <Route path="/campaigns/:campaignId/analytics" element={<CampaignAnalyticsPage workspaceId={workspaceId} />} />
           <Route path="/templates" element={<TemplatesPage workspaceId={workspaceId} />} />
           <Route path="/generate" element={<GeneratePage workspaceId={workspaceId} />} />
           <Route path="/locations" element={<LocationsPage workspaceId={workspaceId} />} />

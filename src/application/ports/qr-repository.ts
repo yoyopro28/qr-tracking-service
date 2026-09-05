@@ -92,5 +92,5 @@ export interface QrRepository {
     longitude?: number;
     source?: "ADMIN_SCAN" | "MANUAL_ADMIN_ENTRY";
   }): Promise<void>;
-  getAnalytics(workspaceId: string, from: string, to: string): Promise<AnalyticsSummary>;
+  getAnalytics(workspaceId: string, from: string, to: string, campaignId?: string): Promise<AnalyticsSummary>;
 }

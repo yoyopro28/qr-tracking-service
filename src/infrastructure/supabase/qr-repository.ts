@@ -267,8 +267,8 @@ export class SupabaseQrRepository implements QrRepository {
     if (error) throw error;
   }
 
-  async getAnalytics(workspaceId: string, from: string, to: string) {
-    const { data, error } = await supabase.functions.invoke("analytics-query", { body: { workspaceId, from, to } });
+  async getAnalytics(workspaceId: string, from: string, to: string, campaignId?: string) {
+    const { data, error } = await supabase.functions.invoke("analytics-query", { body: { workspaceId, from, to, campaignId } });
     if (error) throw error;
     return data;
   }

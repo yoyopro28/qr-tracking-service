@@ -863,6 +863,10 @@ export type Database = {
         Args: { p_from: string; p_to: string; p_workspace_id: string }
         Returns: Json
       }
+      get_campaign_scan_rollup_summary: {
+        Args: { p_campaign_id: string; p_from: string; p_to: string; p_workspace_id: string }
+        Returns: Json
+      }
       is_workspace_member: {
         Args: { p_workspace_id: string }
         Returns: boolean
