@@ -1,5 +1,6 @@
 -- The original command was deployed as a guarded empty-campaign delete.
 -- Replace it with the explicitly confirmed archive-then-cascade behavior.
+drop function if exists public.delete_empty_campaign(uuid, uuid);
 create or replace function public.delete_empty_campaign(p_workspace_id uuid, p_campaign_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = '' as $$
