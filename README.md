@@ -58,6 +58,10 @@ is in [docs/production-deployment.md](docs/production-deployment.md). Deployment
 validation deliberately fails while Worker configs still contain placeholder
 resource IDs or URLs.
 
+Pull requests run CI without deploying. Releases are started together and
+explicitly through the manual `Deploy` workflow, with `admin`, `backend` and
+`all` scopes so a UI-only release does not redeploy Supabase or the Workers.
+
 The historical Next.js/Prisma/PostgreSQL/filesystem implementation remains
 reproducible from the immutable tag `node-postgres-filesystem-v1`.
 
