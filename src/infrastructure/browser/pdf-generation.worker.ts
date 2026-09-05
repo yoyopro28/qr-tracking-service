@@ -27,7 +27,9 @@ function drawQr(page: import("pdf-lib").PDFPage, content: string, placement: QrP
   const left = placement.x + (placement.width - qrSize) / 2;
   const bottom = page.getHeight() - placement.y - placement.height + (placement.height - qrSize) / 2;
 
-  page.drawRectangle({ x: placement.x, y: page.getHeight() - placement.y - placement.height, width: placement.width, height: placement.height, color: rgb(1, 1, 1) });
+  // Keep the QR overlay transparent so the original template remains visible
+  // around and between the QR modules. The quiet zone is represented by the
+  // module offset below rather than by an opaque white background rectangle.
   for (let row = 0; row < size; row += 1) {
     for (let column = 0; column < size; column += 1) {
       if (qr.modules.get(row, column)) {
