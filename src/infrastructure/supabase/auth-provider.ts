@@ -31,6 +31,16 @@ export class SupabaseAuthProvider implements AuthProvider {
     if (error) throw error;
   }
 
+  async signInWithPassword(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) throw error;
+  }
+
+  async signUpWithPassword(email: string, password: string) {
+    const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+    if (error) throw error;
+  }
+
   async signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;

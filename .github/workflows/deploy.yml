@@ -18,11 +18,12 @@ on:
         description: Zu deployender Bereich
         required: true
         type: choice
-        default: all
+        default: admin
         options:
-          - all
           - admin
           - backend
+          - all
+          - bootstrap
 
 concurrency:
   group: qr-tracking-deploy-${{ inputs.environment }}
@@ -68,12 +69,12 @@ jobs:
       - run: npm run deploy:validate
 
       - name: Apply Supabase migrations
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'all' || inputs.scope == 'backend' || inputs.scope == 'bootstrap'
         run: |
           npx supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --yes
           npx supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --yes
       - name: Configure Edge Function secrets
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'bootstrap'
         run: >-
           npx supabase secrets set --project-ref "$SUPABASE_PROJECT_REF"
           ALLOWED_ORIGINS="$ALLOWED_ORIGINS"
@@ -83,31 +84,31 @@ jobs:
           ROLLUP_CRON_SECRET="$ROLLUP_CRON_SECRET"
           MAINTENANCE_CRON_SECRET="$MAINTENANCE_CRON_SECRET"
       - name: Deploy Supabase Edge Functions
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'all' || inputs.scope == 'backend' || inputs.scope == 'bootstrap'
         run: npx supabase functions deploy finalize-flyer-batch analytics-query rollup-scan-analytics cleanup-stale-reservations --project-ref "$SUPABASE_PROJECT_REF"
       - name: Configure Worker secrets
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'bootstrap'
         run: npm run deploy:configure-workers
       - name: Deploy cache-sync Worker
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'all' || inputs.scope == 'backend' || inputs.scope == 'bootstrap'
         run: npx wrangler deploy --config workers/cache-sync/wrangler.jsonc --env "$DEPLOY_ENV"
       - name: Deploy redirect Worker
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'all' || inputs.scope == 'backend' || inputs.scope == 'bootstrap'
         run: npx wrangler deploy --config workers/redirect/wrangler.jsonc --env "$DEPLOY_ENV"
       - name: Configure runtime integrations
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'bootstrap'
         run: npm run deploy:configure-runtime
       - name: Reconcile redirect cache
-        if: inputs.scope == 'all' || inputs.scope == 'backend'
+        if: inputs.scope == 'bootstrap'
         run: npm run cache:reconcile
 
       - name: Build admin SPA
-        if: inputs.scope == 'all' || inputs.scope == 'admin'
+        if: inputs.scope == 'all' || inputs.scope == 'admin' || inputs.scope == 'bootstrap'
         run: |
           npm run build
           npm run build:check
       - name: Deploy admin SPA
-        if: inputs.scope == 'all' || inputs.scope == 'admin'
+        if: inputs.scope == 'all' || inputs.scope == 'admin' || inputs.scope == 'bootstrap'
         run: npx wrangler deploy --env "$DEPLOY_ENV"
 
       - name: Smoke-test deployment

@@ -6,13 +6,19 @@ vorbelegt werden. Diese Anleitung ist deshalb zugleich die einmalige
 Infrastruktur-Checkliste. Danach wird gezielt über einen manuellen GitHub-Actions-
 Workflow deployt.
 
-## 1. Vorab lokal abnehmen
+## 1. Qualitätsprüfungen
+
+Pull Requests führen automatisch den schnellen Check mit Lint, Unit-Tests,
+Anwendungs-Build, Bundle-Prüfung und Worker-Typecheck aus. Der vollständige Check
+mit Supabase, SQL-Tests, Playwright und Wrangler-Dry-Runs wird bewusst nur vor
+größeren Releases unter **GitHub → Actions → CI → Run workflow** gestartet.
+
+Alternativ kann der vollständige Check lokal ausgeführt werden:
 
 ```bash
 npm ci
 npm run supabase:start
 npm run lint
-npm run typecheck
 npm test
 npm run supabase:lint
 npx supabase test db
@@ -163,16 +169,20 @@ Push deployt nichts. Zum Rollout unter **GitHub → Actions → Deploy → Run w
 die Zielumgebung und den Umfang wählen:
 
 - `admin`: nur Vite-Build und Admin-SPA; für reine UI-Änderungen.
-- `backend`: Supabase-Migrationen, Edge Functions, Worker und KV-Abgleich.
+- `backend`: Supabase-Migrationen, Edge Functions und Worker.
 - `all`: vollständiger Rollout beider Bereiche.
+- `bootstrap`: vollständiger Rollout plus erneutes Setzen von Secrets,
+  Vault-/Cron-Konfiguration und KV-Abgleich. Nur für die Ersteinrichtung oder
+  nach einer bewussten Konfigurations- beziehungsweise Secret-Änderung.
 
 Produktion kann ausschließlich vom Branch `main` gestartet werden. Der manuelle
 Workflow führt – abhängig vom gewählten Umfang – in dieser Reihenfolge aus:
 
-1. Validierung aller Variablen, Resource-IDs und Secret-Formate
+1. Umfangsspezifische Validierung der benötigten Variablen und Secrets
 2. optional Supabase-Migrationen und Edge Functions
-3. optional Worker-Secrets, Cache-Sync- und Redirect-Worker
-4. optional Vault-basierte Webhook-/Cron-Konfiguration und KV-Reconciliation
+3. optional Cache-Sync- und Redirect-Worker
+4. nur bei `bootstrap`: Worker-/Function-Secrets, Vault-basierte
+   Webhook-/Cron-Konfiguration und KV-Reconciliation
 5. optional Admin-SPA
 6. HTTP-Smoke-Test
 

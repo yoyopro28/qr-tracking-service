@@ -58,9 +58,11 @@ is in [docs/production-deployment.md](docs/production-deployment.md). Deployment
 validation deliberately fails while Worker configs still contain placeholder
 resource IDs or URLs.
 
-Pull requests run CI without deploying. Releases are started together and
-explicitly through the manual `Deploy` workflow, with `admin`, `backend` and
-`all` scopes so a UI-only release does not redeploy Supabase or the Workers.
+Pull requests run a fast CI check without deploying. Supabase/Playwright
+integration tests and Worker dry-runs are an explicit manual full check.
+Releases are started together through the manual `Deploy` workflow. Its
+`admin`, `backend` and `all` scopes avoid unrelated redeployments; the rare
+`bootstrap` scope additionally refreshes secrets, runtime hooks and the KV cache.
 
 The historical Next.js/Prisma/PostgreSQL/filesystem implementation remains
 reproducible from the immutable tag `node-postgres-filesystem-v1`.
