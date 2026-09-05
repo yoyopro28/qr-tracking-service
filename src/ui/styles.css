@@ -85,6 +85,7 @@ input[type="checkbox"] { width: 1.1rem; min-height: auto; accent-color: var(--ac
 .alert.error, .field-error { border-color: rgb(156 48 40 / 20%); background: #f8e1dc; color: #842921; }
 .alert.success { border-color: rgb(23 107 83 / 20%); background: #e0efe8; color: #155e49; }
 .field-error { padding: .7rem; border-radius: 10px; }
+.field-hint { margin: 0; color: var(--success); font-size: .86rem; }
 .state-card { min-height: 160px; display: grid; place-content: center; justify-items: center; color: var(--muted); }
 .spinner { width: 2rem; aspect-ratio: 1; border: 3px solid #d9d2c4; border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -7,7 +7,7 @@ const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_
 
 test.skip(!supabaseUrl || !secretKey, "VITE_SUPABASE_URL and SUPABASE_SECRET_KEY are required");
 
-test("OTP login, campaign, browser PDF batch and location work end to end", async ({ page }) => {
+test("OTP login, campaign, browser PDF batch and location work end to end", async ({ page, context }) => {
   test.setTimeout(150_000);
   const admin = createClient(supabaseUrl!, secretKey!, { auth: { persistSession: false, autoRefreshToken: false } });
   const email = `e2e-${crypto.randomUUID()}@example.test`;
@@ -88,10 +88,29 @@ test("OTP login, campaign, browser PDF batch and location work end to end", asyn
     const response = await page.request.get((await download.getAttribute("href"))!);
     expect(response.ok()).toBe(true);
     expect((await response.body()).subarray(0, 4).toString()).toBe("%PDF");
-    const { data: flyers, error: flyerError } = await admin.from("flyers").select("status").eq("batch_id", batchId);
+    const { data: flyers, error: flyerError } = await admin.from("flyers").select("status,shortcode").eq("batch_id", batchId);
     if (flyerError) throw flyerError;
     expect(flyers).toHaveLength(1);
     expect(flyers[0].status).toBe("GENERATED");
+
+    await context.grantPermissions(["geolocation"], { origin: "http://127.0.0.1:5173" });
+    await context.setGeolocation({ latitude: 52.520008, longitude: 13.404954 });
+    await page.getByRole("link", { name: "Aktivierung" }).click();
+    await page.getByLabel("Shortcode").fill(flyers[0].shortcode);
+    await page.getByRole("button", { name: "Flyer suchen" }).click();
+    await page.getByLabel("Name des neuen Standorts").fill("E2E GPS Point");
+    await page.getByRole("button", { name: "Aktuellen GPS-Standort übernehmen" }).click();
+    await expect(page.getByLabel("Breitengrad")).toHaveValue("52.520008");
+    await expect(page.getByLabel("Längengrad")).toHaveValue("13.404954");
+    await expect(page.getByText(/Genauigkeit ca\. \d+ m/)).toBeVisible();
+    await page.getByRole("button", { name: "Flyer aktivieren" }).click();
+    await expect(page.getByText(`Flyer ${flyers[0].shortcode} wurde aktiviert.`)).toBeVisible();
+    await expect(page.getByText("Aktiver Standort:")).toContainText("E2E GPS Point");
+
+    const { data: gpsLocation, error: gpsLocationError } = await admin.from("locations").select("latitude,longitude").eq("workspace_id", workspaceId).eq("name", "E2E GPS Point").single();
+    if (gpsLocationError) throw gpsLocationError;
+    expect(gpsLocation.latitude).toBe(52.520008);
+    expect(gpsLocation.longitude).toBe(13.404954);
 
     await page.getByRole("link", { name: "Standorte" }).click();
     await page.getByLabel("Name").fill("E2E Distribution Point");
