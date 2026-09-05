@@ -9,7 +9,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // requests /assets/maplibre-gl-worker.mjs, which does not exist on the SPA Worker.
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
-export function LocationMap({ locations, scansByLocation }: { locations: Location[]; scansByLocation: Map<string, number> }) {
+export function LocationMap({ locations, scansByLocation, campaignNames }: { locations: Location[]; scansByLocation: Map<string, number>; campaignNames?: Map<string, string> }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const points = useMemo(() => locations.filter((location) => location.latitude !== null && location.longitude !== null), [locations]);
@@ -23,7 +23,8 @@ export function LocationMap({ locations, scansByLocation }: { locations: Locatio
     for (const location of points) {
       const scans = scansByLocation.get(location.id) ?? 0;
       const marker = document.createElement("button"); marker.type = "button"; marker.className = "map-marker"; marker.textContent = String(scans); marker.title = `${location.name}: ${scans} Scans`;
-      new maplibregl.Marker({ element: marker }).setLngLat([location.longitude!, location.latitude!]).setPopup(new maplibregl.Popup({ offset: 24 }).setHTML(`<strong>${escapeHtml(location.name)}</strong><br>${scans} Scans`)).addTo(map);
+      const campaign = location.campaignId ? campaignNames?.get(location.campaignId) ?? location.campaignId : "Workspace-weit";
+      new maplibregl.Marker({ element: marker }).setLngLat([location.longitude!, location.latitude!]).setPopup(new maplibregl.Popup({ offset: 24 }).setHTML(`<strong>${escapeHtml(location.name)}</strong><br><span>Kampagne: ${escapeHtml(campaign)}</span><br><span>Scans gesamt: ${scans}</span><br><span>Aktive Flyer: ${location.activeFlyerCount}</span>`)).addTo(map);
       bounds.extend([location.longitude!, location.latitude!]);
     }
     map.once("load", () => { if (points.length > 1) map.fitBounds(bounds, { padding: 60, maxZoom: 13 }); });
