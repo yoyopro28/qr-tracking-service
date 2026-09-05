@@ -3,7 +3,8 @@
 Der Codepfad ist für getrennte Preview- und Produktionsumgebungen vorbereitet.
 Konten, Domains, Resource-IDs und Secrets können nicht sinnvoll im Repository
 vorbelegt werden. Diese Anleitung ist deshalb zugleich die einmalige
-Infrastruktur-Checkliste. Danach deployt GitHub Actions automatisch.
+Infrastruktur-Checkliste. Danach wird gezielt über einen manuellen GitHub-Actions-
+Workflow deployt.
 
 ## 1. Vorab lokal abnehmen
 
@@ -155,23 +156,29 @@ muss zuvor ein eigener SMTP-Provider konfiguriert werden.
 Vor dem öffentlichen Start den OAuth-Consent-Screen, die erlaubten Domains und
 den Login mit einem Konto außerhalb des Projektteams testen.
 
-## 6. Erster automatischer Rollout
+## 6. Manueller Rollout
 
-Ein Push auf `refactor/cloudflare-browser-pdf` rollt Preview aus. Ein Merge auf
-`main` rollt Produktion aus. Der Workflow führt in dieser Reihenfolge aus:
+Pull Requests führen automatisch nur die Qualitätsprüfungen aus. Ein Merge oder
+Push deployt nichts. Zum Rollout unter **GitHub → Actions → Deploy → Run workflow**
+die Zielumgebung und den Umfang wählen:
 
-1. Lint, Typecheck, Unit-, Worker-, SQL- und Browser-E2E-Tests
-2. Validierung aller Variablen, Resource-IDs und Secret-Formate
-3. Supabase-Migrationen
-4. Edge-Function-Secrets und Edge Functions
-5. Worker-Secrets, Cache-Sync- und Redirect-Worker
-6. Vault-basierte Webhook-/Cron-Konfiguration
-7. KV-Reconciliation
-8. Admin-SPA
-9. HTTP-Smoke-Test
+- `admin`: nur Vite-Build und Admin-SPA; für reine UI-Änderungen.
+- `backend`: Supabase-Migrationen, Edge Functions, Worker und KV-Abgleich.
+- `all`: vollständiger Rollout beider Bereiche.
 
-Der erste Lauf stoppt absichtlich, solange Platzhalter in den Wrangler-Dateien
-stehen oder ein erforderlicher GitHub-Wert fehlt.
+Produktion kann ausschließlich vom Branch `main` gestartet werden. Der manuelle
+Workflow führt – abhängig vom gewählten Umfang – in dieser Reihenfolge aus:
+
+1. Validierung aller Variablen, Resource-IDs und Secret-Formate
+2. optional Supabase-Migrationen und Edge Functions
+3. optional Worker-Secrets, Cache-Sync- und Redirect-Worker
+4. optional Vault-basierte Webhook-/Cron-Konfiguration und KV-Reconciliation
+5. optional Admin-SPA
+6. HTTP-Smoke-Test
+
+Der Pull Request muss vor einem Produktionsrollout grün sein. Der erste Deploy-
+Lauf stoppt absichtlich, solange Platzhalter in den Wrangler-Dateien stehen oder
+ein erforderlicher GitHub-Wert fehlt.
 
 ## 7. Abnahme nach dem ersten Rollout
 

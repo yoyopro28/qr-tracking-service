@@ -23,6 +23,12 @@ function safeResponseDetail(value: string) {
   return detail || "empty response";
 }
 
+export function analyticsDateTimeLiteral(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new Error("Invalid analytics date");
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
 export async function queryAnalytics<T>(
   config: AnalyticsEngineConfig,
   sql: string,

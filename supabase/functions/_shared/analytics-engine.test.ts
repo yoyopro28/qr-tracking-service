@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { analyticsDatasetExists, queryAnalytics } from "./analytics-engine.ts";
+import { analyticsDatasetExists, analyticsDateTimeLiteral, queryAnalytics } from "./analytics-engine.ts";
 
 const config = { accountId: "account-id", token: "read-token" };
 
@@ -8,6 +8,11 @@ afterEach(() => {
 });
 
 describe("Analytics Engine client", () => {
+  it("formats UTC timestamps without unsupported fractional seconds", () => {
+    expect(analyticsDateTimeLiteral("2026-09-04T12:34:56.789Z")).toBe("2026-09-04 12:34:56");
+    expect(() => analyticsDateTimeLiteral("not-a-date")).toThrow("Invalid analytics date");
+  });
+
   it("reads rows from Cloudflare's JSON response", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [{ scans: 3 }] }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
