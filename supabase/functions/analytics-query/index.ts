@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { analyticsDatasetExists, queryAnalytics, type AnalyticsEngineConfig, type AnalyticsRow } from "../_shared/analytics-engine.ts";
+import { analyticsDatasetExists, analyticsDateTimeLiteral, queryAnalytics, type AnalyticsEngineConfig, type AnalyticsRow } from "../_shared/analytics-engine.ts";
 import { corsHeaders, json, requireBearer, supabasePublishableKey } from "../_shared/http.ts";
 
 type Input = { workspaceId: string; from: string; to: string };
@@ -12,9 +12,11 @@ type Summary = {
 };
 
 function iso(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) throw new Error("Invalid date range");
-  return date.toISOString().replace("T", " ").replace("Z", "");
+  try {
+    return analyticsDateTimeLiteral(value);
+  } catch {
+    throw new Error("Invalid date range");
+  }
 }
 
 function analyticsDataset() {
