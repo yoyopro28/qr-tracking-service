@@ -828,7 +828,7 @@ export type Database = {
       }
       delete_empty_campaign: {
         Args: { p_campaign_id: string; p_workspace_id: string }
-        Returns: undefined
+        Returns: Json
       }
       enqueue_redirect_cache_reconciliation: {
         Args: { p_limit?: number }

@@ -9,7 +9,7 @@
     { "binding": "REDIRECTS", "id": "00000000000000000000000000000000" }
   ],
   "analytics_engine_datasets": [
-    { "binding": "SCANS", "dataset": "qr_scans" }
+    { "binding": "SCANS", "dataset": "qr_scans_20260905" }
   ],
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "env": {
@@ -17,13 +17,13 @@
       "name": "qr-redirect-preview",
       "secrets": { "required": ["HMAC_SECRET"] },
       "kv_namespaces": [{ "binding": "REDIRECTS", "id": "55f195afad7e4d038bb55439d29f3772" }],
-      "analytics_engine_datasets": [{ "binding": "SCANS", "dataset": "qr_scans_preview" }]
+      "analytics_engine_datasets": [{ "binding": "SCANS", "dataset": "qr_scans_preview_20260905" }]
     },
     "production": {
       "name": "qr-redirect-production",
       "secrets": { "required": ["HMAC_SECRET"] },
       "kv_namespaces": [{ "binding": "REDIRECTS", "id": "85f3b5e9c67d44da9a471f3710e864f2" }],
-      "analytics_engine_datasets": [{ "binding": "SCANS", "dataset": "qr_scans" }]
+      "analytics_engine_datasets": [{ "binding": "SCANS", "dataset": "qr_scans_20260905" }]
     }
   }
 }

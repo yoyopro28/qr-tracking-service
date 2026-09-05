@@ -118,8 +118,17 @@ export class SupabaseQrRepository implements QrRepository {
   }
 
   async deleteCampaign(workspaceId: string, campaignId: string) {
-    const { error } = await supabase.rpc("delete_empty_campaign", { p_workspace_id: workspaceId, p_campaign_id: campaignId });
+    const { data, error } = await supabase.rpc("delete_empty_campaign", { p_workspace_id: workspaceId, p_campaign_id: campaignId });
     if (error) throw error;
+    const result = object(data);
+    for (const path of Array.isArray(result.templatePaths) ? result.templatePaths : []) {
+      const { error: removeError } = await supabase.storage.from("templates").remove([string(path)]);
+      if (removeError) throw removeError;
+    }
+    for (const path of Array.isArray(result.batchPaths) ? result.batchPaths : []) {
+      const { error: removeError } = await supabase.storage.from("generated-flyers").remove([string(path)]);
+      if (removeError) throw removeError;
+    }
   }
 
   async listTemplates(workspaceId: string, campaignId?: string): Promise<Template[]> {

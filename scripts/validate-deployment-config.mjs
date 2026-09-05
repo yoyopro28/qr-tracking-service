@@ -43,7 +43,7 @@ if (deploysBackend) {
   const syncId = sync.env[environment].kv_namespaces[0].id;
   const supabaseUrl = sync.env[environment].vars.SUPABASE_URL;
   const analyticsDataset = redirect.env[environment].analytics_engine_datasets[0].dataset;
-  const expectedDataset = environment === "preview" ? "qr_scans_preview" : "qr_scans";
+  const expectedDataset = environment === "preview" ? "qr_scans_preview_20260905" : "qr_scans_20260905";
 
   if (!/^[0-9a-f]{32}$/i.test(redirectId) || /^([012])\1{31}$/.test(redirectId)) throw new Error(`Invalid ${environment} redirect KV namespace ID`);
   if (redirectId !== syncId) throw new Error(`Redirect and cache-sync Workers must use the same ${environment} KV namespace`);
@@ -70,7 +70,7 @@ if (scope === "bootstrap") {
   for (const name of ["SYNC_WEBHOOK_SECRET", "HMAC_SECRET", "ROLLUP_CRON_SECRET", "MAINTENANCE_CRON_SECRET"]) {
     if (values[name].length < 32) throw new Error(`${name} must contain at least 32 characters`);
   }
-  const expectedDataset = environment === "preview" ? "qr_scans_preview" : "qr_scans";
+  const expectedDataset = environment === "preview" ? "qr_scans_preview_20260905" : "qr_scans_20260905";
   if (values.CLOUDFLARE_ANALYTICS_DATASET !== expectedDataset) throw new Error(`CLOUDFLARE_ANALYTICS_DATASET must be ${expectedDataset} for ${environment}`);
 }
 
