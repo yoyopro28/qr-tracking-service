@@ -42,6 +42,7 @@ export interface QrRepository {
   getCampaign(workspaceId: string, campaignId: string): Promise<Campaign | null>;
   updateCampaign(input: UpdateCampaignInput): Promise<Campaign>;
   archiveCampaign(workspaceId: string, campaignId: string): Promise<void>;
+  deleteCampaign(workspaceId: string, campaignId: string): Promise<void>;
   listTemplates(workspaceId: string, campaignId?: string): Promise<Template[]>;
   reserveTemplate(input: {
     workspaceId: string;
@@ -63,6 +64,7 @@ export interface QrRepository {
   listFlyers(workspaceId: string, campaignId: string): Promise<Flyer[]>;
   getFlyerByShortcode(workspaceId: string, shortcode: string): Promise<Flyer | null>;
   retireFlyer(workspaceId: string, flyerId: string): Promise<void>;
+  deleteFlyer(workspaceId: string, flyerId: string): Promise<void>;
   finalizeFlyerBatch(input: FinalizeBatchInput): Promise<FlyerBatch>;
   listLocations(workspaceId: string): Promise<Location[]>;
   saveLocation(input: {

@@ -117,6 +117,11 @@ export class SupabaseQrRepository implements QrRepository {
     if (error) throw error;
   }
 
+  async deleteCampaign(workspaceId: string, campaignId: string) {
+    const { error } = await supabase.rpc("delete_empty_campaign", { p_workspace_id: workspaceId, p_campaign_id: campaignId });
+    if (error) throw error;
+  }
+
   async listTemplates(workspaceId: string, campaignId?: string): Promise<Template[]> {
     let query = supabase.from("templates").select("*, template_qr_placements(*)").eq("workspace_id", workspaceId).eq("status", "READY");
     if (campaignId) query = query.eq("campaign_id", campaignId);
@@ -206,6 +211,11 @@ export class SupabaseQrRepository implements QrRepository {
   async retireFlyer(workspaceId: string, flyerId: string) {
     const { error } = await supabase.rpc("retire_flyer", { p_workspace_id: workspaceId, p_flyer_id: flyerId });
     if (error) throw error;
+  }
+
+  // Keep the QR tombstone so an old printed code can never be reused.
+  async deleteFlyer(workspaceId: string, flyerId: string) {
+    await this.retireFlyer(workspaceId, flyerId);
   }
 
   async finalizeFlyerBatch(input: Parameters<QrRepository["finalizeFlyerBatch"]>[0]): Promise<FlyerBatch> {

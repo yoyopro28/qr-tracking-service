@@ -826,6 +826,10 @@ export type Database = {
         Args: { p_location_id: string; p_workspace_id: string }
         Returns: undefined
       }
+      delete_empty_campaign: {
+        Args: { p_campaign_id: string; p_workspace_id: string }
+        Returns: undefined
+      }
       enqueue_redirect_cache_reconciliation: {
         Args: { p_limit?: number }
         Returns: number
